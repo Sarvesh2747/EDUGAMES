@@ -60,11 +60,42 @@ exports.markAllAsRead = async (req, res) => {
 exports.sendNotification = async (req, res) => {
     try {
         const { recipientId, title, message, type, data } = req.body;
+        const senderId = req.user._id;
 
-        // Basic permission check - only admin or system can send arbitrary notifications
-        // For now, allowing any authenticated user to send (e.g. teacher to student)
-        // In production, you'd want stricter checks
+        // Check if this is a broadcast to all students
+        if (recipientId === 'all') {
+            const User = require('../models/User');
+            // Find all students assigned to this teacher
+            const students = await User.find({
+                role: 'student',
+                teacherId: senderId
+            });
 
+            if (students.length === 0) {
+                return res.status(404).json({ message: 'No students found to notify.' });
+            }
+
+            // Create notification objects for all students
+            const notifications = students.map(student => ({
+                recipient: student._id,
+                sender: senderId,
+                type: type || 'system',
+                title,
+                message,
+                data: data || {},
+                createdAt: new Date(),
+                isRead: false
+            }));
+
+            // Bulk insert
+            await Notification.insertMany(notifications);
+
+            return res.status(201).json({
+                message: `Notification sent to ${students.length} students`
+            });
+        }
+
+        // Single recipient logic
         const notification = await Notification.create({
             recipient: recipientId,
             sender: req.user._id,

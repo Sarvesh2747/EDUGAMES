@@ -175,9 +175,10 @@ const SettingsScreen = ({ navigation }: any) => {
                         <View style={styles.divider} />
                         <SettingItem
                             icon="bell-outline"
-                            title="Notifications"
-                            description="Manage notification preferences"
+                            title="View Notifications"
+                            description="See your notifications"
                             gradient={notificationsEnabled ? ['#10B981', '#059669'] : undefined}
+                            onPress={() => navigation.navigate('Notifications')}
                             rightComponent={
                                 <Switch
                                     value={notificationsEnabled}

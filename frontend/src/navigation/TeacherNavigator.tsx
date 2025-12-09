@@ -16,6 +16,7 @@ import QuizScreen from '../screens/QuizScreen';
 import QuizResult from '../screens/QuizResult';
 import TeacherChapterViewerScreen from '../screens/TeacherChapterViewerScreen';
 import TeacherGameAnalyticsScreen from '../screens/teacher/TeacherGameAnalyticsScreen';
+import TeacherSendNotificationScreen from '../screens/teacher/TeacherSendNotificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +42,7 @@ const TeacherNavigator = () => {
             <Stack.Screen name="TeacherVideoManager" component={require('../screens/teacher/TeacherVideoManagerScreen').default} />
             <Stack.Screen name="TeacherWellbeing" component={require('../screens/teacher/TeacherWellbeingScreen').default} />
             <Stack.Screen name="TeacherFeedback" component={require('../screens/teacher/TeacherFeedbackScreen').default} />
+            <Stack.Screen name="TeacherSendNotification" component={TeacherSendNotificationScreen} />
         </Stack.Navigator>
     );
 };

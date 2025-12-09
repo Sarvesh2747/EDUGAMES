@@ -61,6 +61,18 @@ const GamesScreen = ({ navigation }: any) => {
             isNew: true,
             gameId: 'time_travel_debug'
         },
+        {
+            id: 102,
+            title: 'Genetics Lab',
+            description: 'Predict offspring traits',
+            icon: 'dna',
+            color: '#4CAF50',
+            gradient: ['#43A047', '#66BB6A'],
+            route: 'GeneticsLab',
+            category: 'Science',
+            isNew: true,
+            gameId: 'genetics_lab'
+        },
         // ... (other games need 'gameId' added to match what they save)
 
         {

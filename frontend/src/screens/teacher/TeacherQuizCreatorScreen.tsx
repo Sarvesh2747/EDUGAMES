@@ -90,7 +90,7 @@ const TeacherQuizCreatorScreen = () => {
                     subject,
                     questions
                 });
-                Alert.alert('Success', 'Quiz created successfully!', [
+                Alert.alert('Success', 'Quiz Created Successfully', [
                     { text: 'OK', onPress: () => navigation.goBack() }
                 ]);
             }

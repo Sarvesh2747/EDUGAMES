@@ -45,6 +45,7 @@ const TeacherHomeScreen = () => {
         { title: 'Game Analytics', icon: 'game-controller', screen: 'TeacherGameAnalytics', color: '#F97316' },
         { title: 'Video Manager', icon: 'logo-youtube', screen: 'TeacherVideoManager', color: '#FF0000' },
         { title: 'Student Feedback', icon: 'chatbubbles', screen: 'TeacherFeedback', color: '#0EA5E9' },
+        { title: 'Send Notification', icon: 'notifications', screen: 'TeacherSendNotification', color: '#F43F5E' },
     ];
 
     return (

@@ -30,7 +30,7 @@ const TeacherContentManagerScreen = () => {
                 classNumber: selectedClass,
                 subject
             });
-            Alert.alert('Success', 'Chapter created successfully!', [
+            Alert.alert('Success', 'Content Created Successfully', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
         } catch (error) {

@@ -81,6 +81,7 @@ const MainNavigator = () => {
             {/* New Games */}
 
             <Stack.Screen name="TimeTravelDebug" component={require('../screens/games/TimeTravelDebugScreen').default} />
+            <Stack.Screen name="GeneticsLab" component={require('../screens/games/GeneticsLabScreen').default} />
 
 
 

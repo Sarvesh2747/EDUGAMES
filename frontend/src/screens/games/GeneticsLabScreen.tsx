@@ -158,20 +158,38 @@ const GeneticsLabScreen = () => {
     };
 
     const updateGrid = (row: number, col: number, allele: Allele) => {
-        const expectedTop = currentLevel.parent1[col];
-        const expectedLeft = currentLevel.parent2[row];
-
         setGridState(prev => {
             const currentVal = prev[row][col];
             if (currentVal.length >= 2) return prev;
 
-            if (allele !== expectedTop && allele !== expectedLeft) {
+            // Strict Validation Logic
+            // 1. Determine what the final cell SHOULD contain
+            const neededForCell = [currentLevel.parent1[col], currentLevel.parent2[row]];
+
+            // 2. Determine what it DOES contain currently
+            const currentAlleles = currentVal.split('');
+
+            // 3. Subtract current from needed to find what is still missing
+            const remainingNeeded = [...neededForCell];
+            currentAlleles.forEach(existing => {
+                const idx = remainingNeeded.indexOf(existing as Allele);
+                if (idx > -1) {
+                    remainingNeeded.splice(idx, 1);
+                }
+            });
+
+            // 4. Check if the dragged allele is one of the remaining needed ones
+            const matchIndex = remainingNeeded.indexOf(allele);
+
+            if (matchIndex === -1) {
+                // Wrong! This allele is not needed (either redundant or incorrect)
                 soundManager.playWrong();
                 setWrongCell({ r: row, c: col });
                 setTimeout(() => setWrongCell(null), 500);
                 return prev;
             }
 
+            // Correct!
             const newVal = currentVal + allele;
             soundManager.playClick();
 
