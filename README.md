@@ -1,4 +1,6 @@
-# Rural Learning App
+# Gamefied Learning App For Rular Areas
+
+SIH-2025 Runner UP PROJECT BY GOV OF ODISA
 
 A comprehensive educational platform for rural communities, featuring lessons, quizzes, games, and interactive science modules.
 
