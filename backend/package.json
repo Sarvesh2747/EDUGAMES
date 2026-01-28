@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
+        "@langchain/core": "^1.1.17",
         "@langchain/google-genai": "^2.0.4",
         "@langchain/mistralai": "^1.0.1",
         "bcryptjs": "^2.4.3",
