@@ -50,53 +50,79 @@ const QuizResult = ({ route, navigation }: any) => {
     }, []);
 
     const ReviewModal = () => (
-        <Modal visible={showReview} animationType="slide" onRequestClose={() => setShowReview(false)}>
-            <View style={[styles.modalContainer, { backgroundColor: '#F4F7FC' }]}>
-                <View style={styles.modalHeader}>
-                    <Text variant="headlineSmall" style={{ fontWeight: 'bold', color: '#333' }}>Review Mistakes</Text>
-                    <IconButton icon="close" onPress={() => setShowReview(false)} />
-                </View>
-                <ScrollView contentContainerStyle={styles.modalContent}>
-                    {questions?.map((q: any, index: number) => {
-                        const userAnswer = userAnswers?.[index];
-                        const isCorrect = userAnswer === q.correctIndex;
+        <Modal visible={showReview} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowReview(false)}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
+                {/* Modal Header */}
+                <Surface style={styles.modalHeader} elevation={2}>
+                    <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>Review Mistakes</Text>
+                    <IconButton icon="close" onPress={() => setShowReview(false)} size={24} />
+                </Surface>
 
-                        if (isCorrect) return null;
+                <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+                    <View style={{ maxWidth: 800, alignSelf: 'center', width: '100%' }}>
+                        {questions?.map((q: any, index: number) => {
+                            const userAnswer = userAnswers?.[index];
+                            const isCorrect = userAnswer === q.correctIndex;
 
-                        return (
-                            <Surface key={index} style={styles.reviewCard} elevation={2}>
-                                <Text variant="titleMedium" style={styles.reviewQuestion}>
-                                    {index + 1}. {q.question}
-                                </Text>
-                                <View style={styles.answerRow}>
-                                    <MaterialCommunityIcons name="close-circle" size={20} color="#F44336" />
-                                    <Text style={[styles.answerText, { color: '#F44336' }]}>
-                                        Your Answer: {userAnswer !== null ? q.options[userAnswer] : 'Skipped'}
-                                    </Text>
-                                </View>
-                                <View style={styles.answerRow}>
-                                    <MaterialCommunityIcons name="check-circle" size={20} color="#4CAF50" />
-                                    <Text style={[styles.answerText, { color: '#4CAF50' }]}>
-                                        Correct Answer: {q.options[q.correctIndex]}
-                                    </Text>
-                                </View>
-                                {q.explanation && (
-                                    <View style={styles.explanationBox}>
-                                        <Text variant="bodySmall" style={{ fontWeight: 'bold', color: '#555' }}>Explanation:</Text>
-                                        <Text variant="bodySmall" style={{ color: '#666' }}>{q.explanation}</Text>
+                            if (isCorrect) return null;
+
+                            return (
+                                <Surface key={index} style={[styles.reviewCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
+                                    <View style={styles.questionSection}>
+                                        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8 }}>
+                                            Question {index + 1}
+                                        </Text>
+                                        <Text variant="bodyLarge" style={[styles.reviewQuestion, { color: theme.colors.onSurface }]}>
+                                            {q.question}
+                                        </Text>
                                     </View>
-                                )}
-                            </Surface>
-                        );
-                    })}
-                    {correctAnswers === totalQuestions && (
-                        <View style={styles.perfectScoreContainer}>
-                            <MaterialCommunityIcons name="trophy" size={64} color="#FFD700" />
-                            <Text variant="titleLarge" style={{ marginTop: 16, textAlign: 'center' }}>
-                                Perfect Score! No mistakes to review.
-                            </Text>
-                        </View>
-                    )}
+
+                                    {/* User's Wrong Answer */}
+                                    <Surface style={[styles.answerBox, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+                                        <View style={styles.answerHeader}>
+                                            <MaterialCommunityIcons name="close-circle" size={20} color="#EF4444" />
+                                            <Text style={[styles.answerLabel, { color: '#EF4444' }]}>Your Answer</Text>
+                                        </View>
+                                        <Text style={[styles.answerText, { color: theme.colors.onSurfaceVariant }]}>
+                                            {userAnswer !== null ? q.options[userAnswer] : 'Skipped'}
+                                        </Text>
+                                    </Surface>
+
+                                    {/* Correct Answer */}
+                                    <Surface style={[styles.answerBox, { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.3)', marginTop: 8 }]}>
+                                        <View style={styles.answerHeader}>
+                                            <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />
+                                            <Text style={[styles.answerLabel, { color: '#10B981' }]}>Correct Answer</Text>
+                                        </View>
+                                        <Text style={[styles.answerText, { color: theme.colors.onSurfaceVariant }]}>
+                                            {q.options[q.correctIndex]}
+                                        </Text>
+                                    </Surface>
+
+                                    {q.explanation && (
+                                        <View style={[styles.explanationBox, { backgroundColor: theme.colors.elevation.level1 }]}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                                <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={theme.colors.secondary} style={{ marginRight: 6 }} />
+                                                <Text variant="labelLarge" style={{ fontWeight: 'bold', color: theme.colors.secondary }}>Explanation</Text>
+                                            </View>
+                                            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, lineHeight: 20 }}>{q.explanation}</Text>
+                                        </View>
+                                    )}
+                                </Surface>
+                            );
+                        })}
+                        {correctAnswers === totalQuestions && (
+                            <View style={styles.perfectScoreContainer}>
+                                <MaterialCommunityIcons name="trophy-outline" size={80} color="#FACC15" />
+                                <Text variant="headlineMedium" style={{ marginTop: 16, textAlign: 'center', fontWeight: 'bold', color: theme.colors.onSurface }}>
+                                    Perfect Score!
+                                </Text>
+                                <Text variant="bodyLarge" style={{ marginTop: 8, textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+                                    You answered everything correctly. No mistakes to review!
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </ScrollView>
             </View>
         </Modal>
@@ -284,43 +310,54 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#fff',
+        paddingTop: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+        zIndex: 10,
     },
     modalContent: {
-        padding: 16,
+        padding: 20,
+        paddingBottom: 40,
     },
     reviewCard: {
-        padding: 16,
-        borderRadius: 16,
+        padding: 24,
+        borderRadius: 20,
+        marginBottom: 20,
+    },
+    questionSection: {
         marginBottom: 16,
-        backgroundColor: '#fff',
     },
     reviewQuestion: {
-        fontWeight: 'bold',
-        marginBottom: 12,
-        color: '#333',
+        lineHeight: 24,
     },
-    answerRow: {
+    answerBox: {
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    answerHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
-        gap: 8,
+        marginBottom: 4,
+    },
+    answerLabel: {
+        fontWeight: 'bold',
+        marginLeft: 8,
+        fontSize: 14,
     },
     answerText: {
-        flex: 1,
-        fontWeight: '500',
+        fontSize: 16,
+        marginLeft: 28, // Align with text start of label
     },
     explanationBox: {
-        marginTop: 12,
-        padding: 12,
-        backgroundColor: '#F5F5F5',
+        marginTop: 16,
+        padding: 16,
         borderRadius: 12,
     },
     perfectScoreContainer: {
         alignItems: 'center',
-        marginTop: 40,
+        marginTop: 60,
+        padding: 40,
     },
 });
 

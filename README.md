@@ -195,8 +195,11 @@ EduGames is a full-stack React Native (Expo) + Node.js application that provides
 - **ScaleButton**: Tactile press animations on all interactive elements
 - **Watermark Icons**: Subtle depth effects on cards
 - **Glassmorphic Nav Bar**: Floating bottom navigation with blur effect
-- **Responsive Design**: Optimized for mobile, tablet, and web
+- **Responsive Design**: Optimized for mobile, tablet, and web (max-width constraints)
 - **Premium Gradients**: Vibrant color schemes across dashboards
+- **Advanced Quiz UI**: Glassmorphic question cards with segmented progress bars
+- **Smart Review System**: Color-coded "Review Mistakes" modal for instant feedback distinction
+- **Organized Tasks**: Tabbed view for Pending vs Completed assignments
 
 ---
 

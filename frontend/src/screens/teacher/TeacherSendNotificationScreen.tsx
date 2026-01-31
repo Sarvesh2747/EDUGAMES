@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
-import { Text, TextInput, Surface, ActivityIndicator, Switch } from 'react-native-paper';
+import { Text, TextInput, Surface, ActivityIndicator, Portal, Dialog, Paragraph, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,6 +24,9 @@ const TeacherSendNotificationScreen = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [history, setHistory] = useState<any[]>([]);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [deleteId, setDeleteId] = useState<string | null>(null); // For delete confirmation
 
     // Form state
     const [selectedStudent, setSelectedStudent] = useState('');
@@ -53,10 +56,6 @@ const TeacherSendNotificationScreen = () => {
     };
 
     const handleSend = async () => {
-        if (audienceType === 'individual' && !selectedStudent) {
-            Alert.alert('Error', 'Please select a student');
-            return;
-        }
         if (!title.trim() || !message.trim()) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
@@ -64,30 +63,52 @@ const TeacherSendNotificationScreen = () => {
 
         setSending(true);
         try {
-            let payload: any = {
-                title,
-                message,
-                type: notificationType,
-                data: {}
-            };
-
-            if (audienceType === 'individual') {
-                payload.recipientId = selectedStudent;
-            } else if (audienceType === 'all') {
-                payload.recipientId = 'all';
+            if (editingId) {
+                // Update existing
+                await api.put(`/notifications/sent/${editingId}`, {
+                    title,
+                    message
+                });
+                setEditingId(null);
             } else {
-                payload.recipientId = 'filtered';
-                payload.filters = {};
-                if (selectedClass) payload.filters.classLevel = parseInt(selectedClass);
-                if (selectedCategory) payload.filters.learnerCategory = selectedCategory;
+                // Send new
+                if (audienceType === 'individual' && !selectedStudent) {
+                    Alert.alert('Error', 'Please select a student');
+                    setSending(false);
+                    return;
+                }
+
+                let payload: any = {
+                    title,
+                    message,
+                    type: notificationType,
+                    data: {}
+                };
+
+                if (audienceType === 'individual') {
+                    payload.recipientId = selectedStudent;
+                } else if (audienceType === 'all') {
+                    payload.recipientId = 'all';
+                } else {
+                    payload.recipientId = 'filtered';
+                    payload.filters = {};
+                    if (selectedClass) payload.filters.classLevel = parseInt(selectedClass);
+                    if (selectedCategory) payload.filters.learnerCategory = selectedCategory;
+                }
+
+                await api.post('/notifications/send', payload);
             }
 
-            await api.post('/notifications/send', payload);
-
             setShowSuccessModal(true);
+            fetchHistory(); // Refresh history
+            // Clear form
+            if (!editingId) {
+                setTitle('');
+                setMessage('');
+            }
         } catch (error: any) {
-            console.error('Failed to send notification:', error);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to send notification');
+            console.error('Failed to send/update notification:', error);
+            alert(error.response?.data?.message || 'Failed to process request');
         } finally {
             setSending(false);
         }
@@ -110,6 +131,52 @@ const TeacherSendNotificationScreen = () => {
             case 'reminder': return 'clock-alert';
             case 'system': return 'bell-ring';
             default: return 'bell';
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+    }, []);
+
+    const fetchHistory = async () => {
+        try {
+            const res = await api.get('/notifications/sent');
+            setHistory(res.data);
+        } catch (error) {
+            console.error('Failed to fetch history', error);
+        }
+    };
+
+    const handleEdit = (item: any) => {
+        setTitle(item.title);
+        setMessage(item.message);
+        setNotificationType(item.type);
+        setEditingId(item._id);
+        // Reset audience to 'all' or simple default as we can't easily reconstruct complex filters from history yet
+        // Ideally we would store and retrieve that metadata, but for now we assume broadcast update updates all.
+        setAudienceType('all');
+
+        // Scroll to top
+        // scrollViewRef.current?.scrollTo({ y: 0, animated: true }); 
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setTitle('');
+        setMessage('');
+        setNotificationType('assignment');
+        setAudienceType('all');
+    };
+
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/notifications/sent/${deleteId}`);
+            setDeleteId(null);
+            fetchHistory(); // Refresh
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+            alert('Failed to delete notification');
         }
     };
 
@@ -311,10 +378,52 @@ const TeacherSendNotificationScreen = () => {
                                         ) : (
                                             <>
                                                 <MaterialCommunityIcons name="send" size={20} color="#fff" />
-                                                <Text style={styles.sendButtonText}>Send Notification</Text>
+                                                <Text style={styles.sendButtonText}>
+                                                    {editingId ? 'Update Notification' : 'Send Notification'}
+                                                </Text>
                                             </>
                                         )}
                                     </TouchableOpacity>
+
+                                    {editingId && (
+                                        <TouchableOpacity
+                                            onPress={cancelEdit}
+                                            style={{ marginTop: 12, alignItems: 'center' }}
+                                        >
+                                            <Text style={{ color: isDark ? '#94A3B8' : '#64748B' }}>Cancel Edit</Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {/* History Section */}
+                                    {history.length > 0 && (
+                                        <View style={{ marginTop: 32 }}>
+                                            <Text style={[styles.label, { color: isDark ? '#CBD5E1' : '#64748B', marginBottom: 12 }]}>LAST SENT NOTIFICATIONS</Text>
+                                            {history.map((item) => (
+                                                <Surface key={item._id} style={[styles.card, { backgroundColor: isDark ? '#1E293B' : '#fff', marginBottom: 12, padding: 16 }]}>
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <View style={{ flex: 1 }}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                                                <MaterialCommunityIcons name={getTypeIcon(item.type) as any} size={16} color={getTypeColor(item.type)} />
+                                                                <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#64748B' }}>
+                                                                    {new Date(item.createdAt).toLocaleDateString()} • {item.recipientCount} Recipients
+                                                                </Text>
+                                                            </View>
+                                                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDark ? '#fff' : '#1F2937', marginBottom: 4 }}>{item.title}</Text>
+                                                            <Text style={{ fontSize: 14, color: isDark ? '#CBD5E1' : '#4B5563' }} numberOfLines={2}>{item.message}</Text>
+                                                        </View>
+                                                        <View style={{ flexDirection: 'row' }}>
+                                                            <TouchableOpacity onPress={() => handleEdit(item)} style={{ padding: 8 }}>
+                                                                <MaterialCommunityIcons name="pencil" size={20} color="#4F46E5" />
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity onPress={() => setDeleteId(item._id)} style={{ padding: 8 }}>
+                                                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#EF4444" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+                                                </Surface>
+                                            ))}
+                                        </View>
+                                    )}
 
                                 </Animated.View>
                             )}
@@ -325,8 +434,8 @@ const TeacherSendNotificationScreen = () => {
 
                 <SuccessModal
                     visible={showSuccessModal}
-                    title="Notification Sent!"
-                    message="Your notification has been broadcast successfully."
+                    title={editingId ? "Notification Updated" : "Notification Sent!"}
+                    message={editingId ? "The notification content has been updated for all recipients." : "Your notification has been broadcast successfully."}
                     onClose={() => {
                         setShowSuccessModal(false);
                         navigation.goBack();
@@ -334,6 +443,35 @@ const TeacherSendNotificationScreen = () => {
                     buttonText="Done"
                 />
             </View>
+            <Portal>
+                <Dialog visible={!!deleteId} onDismiss={() => setDeleteId(null)} style={{ backgroundColor: isDark ? '#1E293B' : '#fff', borderRadius: 16, maxWidth: 500, width: '100%', alignSelf: 'center' }}>
+                    <Dialog.Icon icon="trash-can" color="#EF4444" size={40} />
+                    <Dialog.Title style={{ textAlign: 'center', color: isDark ? '#fff' : '#1E293B' }}>Delete Notification?</Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={{ textAlign: 'center', color: isDark ? '#CBD5E1' : '#475569' }}>
+                            Are you sure you want to delete this notification from student dashboards?
+                        </Paragraph>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 24 }}>
+                        <Button
+                            mode="outlined"
+                            onPress={() => setDeleteId(null)}
+                            textColor={isDark ? '#CBD5E1' : '#64748B'}
+                            style={{ flex: 1, marginRight: 8, borderColor: isDark ? '#475569' : '#E2E8F0' }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={handleDelete}
+                            buttonColor="#EF4444"
+                            style={{ flex: 1, marginLeft: 8 }}
+                        >
+                            Delete
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </ScreenBackground>
     );
 };

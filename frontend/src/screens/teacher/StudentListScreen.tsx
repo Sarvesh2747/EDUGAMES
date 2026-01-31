@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, FlatList, StyleSheet, Text, TouchableOpacity, ActivityIndicator, Alert, TextInput, useWindowDimensions, Modal, ScrollView, Pressable } from 'react-native';
+import { Portal, Dialog, Button, Paragraph } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +28,10 @@ const StudentListScreen = () => {
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedLearnerType, setSelectedLearnerType] = useState('All');
 
+    // Delete Dialog State
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [studentToDelete, setStudentToDelete] = useState<any>(null);
+
     useEffect(() => {
         fetchStudents();
     }, []);
@@ -44,26 +49,24 @@ const StudentListScreen = () => {
         }
     };
 
-    const handleDelete = (id: string) => {
-        Alert.alert(
-            'Delete Student',
-            'Are you sure you want to delete this student?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await api.delete(`/teacher/student/${id}`);
-                            fetchStudents();
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to delete student');
-                        }
-                    },
-                },
-            ]
-        );
+    const handleDelete = (id: string, name: string) => {
+        setStudentToDelete({ id, name });
+        setDeleteDialogVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!studentToDelete) return;
+
+        try {
+            await api.delete(`/teacher/student/${studentToDelete.id}`);
+            await fetchStudents();
+        } catch (error) {
+            console.error('Delete error:', error);
+            Alert.alert('Error', 'Failed to delete student');
+        } finally {
+            setDeleteDialogVisible(false);
+            setStudentToDelete(null);
+        }
     };
 
     // Derived Data
@@ -183,7 +186,7 @@ const StudentListScreen = () => {
 
                         <TouchableOpacity
                             style={styles.iconButton}
-                            onPress={() => handleDelete(item._id)}
+                            onPress={() => handleDelete(item._id, item.name)}
                         >
                             <LinearGradient
                                 colors={['#EF4444', '#DC2626']}
@@ -377,7 +380,70 @@ const StudentListScreen = () => {
                     </Pressable>
                 </Pressable>
             </Modal>
-        </ScreenBackground>
+
+            {/* Delete Confirmation Dialog */}
+            <Portal>
+                <Dialog
+                    visible={deleteDialogVisible}
+                    onDismiss={() => setDeleteDialogVisible(false)}
+                    style={{
+                        backgroundColor: isDark ? '#1E293B' : '#fff',
+                        borderRadius: 16,
+                        maxWidth: 400,
+                        width: '90%',
+                        alignSelf: 'center'
+                    }}
+                >
+                    <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                        <View style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 16,
+                            backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginBottom: 16
+                        }}>
+                            <MaterialCommunityIcons name="delete-outline" size={32} color="#EF4444" />
+                        </View>
+                        <Text style={{
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                            color: isDark ? '#fff' : '#1E293B',
+                            marginBottom: 8
+                        }}>
+                            Delete Student?
+                        </Text>
+                        <Text style={{
+                            fontSize: 14,
+                            color: isDark ? '#94A3B8' : '#64748B',
+                            textAlign: 'center',
+                            paddingHorizontal: 24
+                        }}>
+                            Are you sure you want to delete "{studentToDelete?.name}"? This action cannot be undone.
+                        </Text>
+                    </View>
+                    <Dialog.Actions style={{ paddingHorizontal: 24, paddingBottom: 24, justifyContent: 'space-between' }}>
+                        <Button
+                            mode="outlined"
+                            onPress={() => setDeleteDialogVisible(false)}
+                            style={{ flex: 1, marginRight: 8, borderRadius: 8, borderColor: isDark ? '#475569' : '#E2E8F0' }}
+                            textColor={isDark ? '#CBD5E1' : '#64748B'}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={confirmDelete}
+                            style={{ flex: 1, marginLeft: 8, borderRadius: 8, backgroundColor: '#EF4444' }}
+                            textColor="#fff"
+                        >
+                            Delete
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+        </ScreenBackground >
     );
 };
 

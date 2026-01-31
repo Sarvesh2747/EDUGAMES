@@ -3,9 +3,12 @@ const Notification = require('../models/Notification');
 // Get user's notifications
 exports.getNotifications = async (req, res) => {
     try {
+        // console.log('Fetching notifications for user:', req.user._id);
         const notifications = await Notification.find({ recipient: req.user._id })
             .sort({ createdAt: -1 })
             .limit(50);
+
+        // console.log(`Found ${notifications.length} notifications`);
 
         const unreadCount = await Notification.countDocuments({
             recipient: req.user._id,
@@ -70,7 +73,7 @@ exports.sendNotification = async (req, res) => {
             // Build query
             const query = {
                 role: 'student',
-                teacherId: senderId
+                // teacherId: senderId
             };
 
             // Apply filters if present
@@ -80,7 +83,9 @@ exports.sendNotification = async (req, res) => {
             }
 
             // Find students matching query
+            // console.log('Broadcasting with query:', query);
             const students = await User.find(query);
+            // console.log(`Found ${students.length} students to notify`);
 
             if (students.length === 0) {
                 return res.status(404).json({ message: 'No students found to notify.' });
@@ -99,7 +104,8 @@ exports.sendNotification = async (req, res) => {
             }));
 
             // Bulk insert
-            await Notification.insertMany(notifications);
+            const result = await Notification.insertMany(notifications);
+            // console.log(`Inserted ${result.length} notifications`);
 
             return res.status(201).json({
                 message: `Notification sent to ${students.length} students`
@@ -123,6 +129,120 @@ exports.sendNotification = async (req, res) => {
     }
 };
 
+// Get sent notifications history
+exports.getSentHistory = async (req, res) => {
+    try {
+        const history = await Notification.aggregate([
+            { $match: { sender: req.user._id } },
+            { $sort: { createdAt: -1 } },
+            {
+                $group: {
+                    _id: {
+                        title: '$title',
+                        message: '$message',
+                        type: '$type',
+                        // Group by minute to catch broadcasts
+                        timeBlock: {
+                            $dateToString: { format: '%Y-%m-%d %H:%M', date: '$createdAt' }
+                        }
+                    },
+                    id: { $first: '$_id' }, // Keep one ID for reference
+                    createdAt: { $first: '$createdAt' },
+                    count: { $sum: 1 },
+                    recipients: { $push: '$recipient' }
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            { $limit: 10 }
+        ]);
+
+        res.json(history.map(h => ({
+            _id: h.id,
+            title: h._id.title,
+            message: h._id.message,
+            type: h._id.type,
+            createdAt: h.createdAt,
+            recipientCount: h.count
+        })));
+    } catch (error) {
+        console.error('Error fetching sent history:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Update a sent notification (and its peers)
+exports.updateSentNotification = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, message } = req.body;
+
+        const original = await Notification.findById(id);
+        if (!original) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        if (original.sender.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        // Find peer notifications (same sender, same original content, similar time)
+        // We use a small time window (e.g., +/- 1 minute) to match the batch
+        const timeWindow = 60 * 1000; // 1 minute
+        const startTime = new Date(original.createdAt.getTime() - timeWindow);
+        const endTime = new Date(original.createdAt.getTime() + timeWindow);
+
+        const result = await Notification.updateMany(
+            {
+                sender: req.user._id,
+                title: original.title,
+                message: original.message,
+                createdAt: { $gte: startTime, $lte: endTime }
+            },
+            {
+                $set: { title, message }
+            }
+        );
+
+        res.json({ message: `Updated ${result.modifiedCount} notifications` });
+    } catch (error) {
+        console.error('Error updating notification:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Delete a sent notification (and its peers)
+exports.deleteSentNotification = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const original = await Notification.findById(id);
+        if (!original) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        if (original.sender.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        // Find peers to delete batch
+        const timeWindow = 60 * 1000; // 1 minute
+        const startTime = new Date(original.createdAt.getTime() - timeWindow);
+        const endTime = new Date(original.createdAt.getTime() + timeWindow);
+
+        const result = await Notification.deleteMany({
+            sender: req.user._id,
+            title: original.title,
+            message: original.message,
+            createdAt: { $gte: startTime, $lte: endTime }
+        });
+
+        res.json({ message: `Deleted ${result.deletedCount} notifications` });
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 // Internal helper to create notification
 exports.createNotification = async ({ recipient, sender, type, title, message, data }) => {
     try {
@@ -138,3 +258,5 @@ exports.createNotification = async ({ recipient, sender, type, title, message, d
         console.error('Error creating internal notification:', error);
     }
 };
+
+// Exports are handled inline above

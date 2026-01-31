@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
-import { Text, TextInput, ActivityIndicator, Surface } from 'react-native-paper';
+import { Text, TextInput, ActivityIndicator, Surface, Portal, Dialog, Button, Paragraph } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +23,24 @@ const TeacherContentManagerScreen = () => {
     const [loading, setLoading] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [confirmVisible, setConfirmVisible] = useState(false);
+    const [generating, setGenerating] = useState(false);
+
+    // AI Edit State
+    const [showAIEditDialog, setShowAIEditDialog] = useState(false);
+    const [aiInstruction, setAiInstruction] = useState('');
+    const [textRangeToReplace, setTextRangeToReplace] = useState<{ start: number, end: number } | null>(null);
+
+    // Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertTitle, setAlertTitle] = useState('');
+    const [alertMessage, setAlertMessage] = useState('');
+
+    const showAlert = (title: string, message: string) => {
+        setAlertTitle(title);
+        setAlertMessage(message);
+        setAlertVisible(true);
+    };
 
     // Chapter Details
     const [title, setTitle] = useState('');
@@ -35,11 +53,16 @@ const TeacherContentManagerScreen = () => {
     // Selection Tracking for Toolbar
     const [selection, setSelection] = useState({ start: 0, end: 0 });
 
-    const handleSubmit = async () => {
+    const handlePublishPress = () => {
         if (!title || !content || !subject || !selectedClass) {
-            Alert.alert('Error', 'Please fill in all details');
+            showAlert('Missing Information', 'Please fill in all details (Title, Content, Class, Subject)');
             return;
         }
+        setConfirmVisible(true);
+    };
+
+    const confirmPublish = async () => {
+        setConfirmVisible(false);
         setLoading(true);
         try {
             await api.post('/teacher/chapter', {
@@ -52,9 +75,77 @@ const TeacherContentManagerScreen = () => {
             setShowSuccessModal(true);
         } catch (error) {
             console.error('Failed to create chapter:', error);
-            Alert.alert('Error', 'Failed to create chapter');
+            showAlert('Error', 'Failed to create chapter');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAIGenerate = async () => {
+        if (!title) {
+            showAlert('Title Required', 'Please enter a title first to generate content.');
+            return;
+        }
+
+        setGenerating(true);
+        try {
+            const prompt = `Write a detailed and engaging educational chapter content about "${title}" for Class ${selectedClass} student. Subject is ${subject}. Use bolding, clear headings, and bullet points where appropriate. format in Markdown.`;
+            const res = await api.post('/ai/generate', { prompt });
+            if (res.data && res.data.text) {
+                const newText = content ? content + '\n\n' + res.data.text : res.data.text;
+                setContent(newText);
+                setIsPreview(false); // Switch to edit mode to see result
+            }
+        } catch (error) {
+            console.error('AI Generation failed:', error);
+            showAlert('Error', 'Failed to generate content. Please try again.');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const openAIEditDialog = () => {
+        let start = selection.start;
+        let end = selection.end;
+
+        // If no selection, select all
+        if (start === end) {
+            start = 0;
+            end = content.length;
+        }
+
+        if (end - start === 0) {
+            showAlert('No Content', 'Please write some content first.');
+            return;
+        }
+
+        setTextRangeToReplace({ start, end });
+        setAiInstruction('');
+        setShowAIEditDialog(true);
+    };
+
+    const handleAIEditConfirm = async () => {
+        if (!aiInstruction || !textRangeToReplace) return;
+
+        setShowAIEditDialog(false);
+        setGenerating(true);
+
+        try {
+            const originalText = content.substring(textRangeToReplace.start, textRangeToReplace.end);
+            const prompt = `Here is a text snippet: "${originalText}". Rewrite this text based on the following instruction: "${aiInstruction}". Return ONLY the rewritten text, formatted in Markdown if needed. Do not include any conversational filler.`;
+
+            const res = await api.post('/ai/generate', { prompt });
+            if (res.data && res.data.text) {
+                const before = content.substring(0, textRangeToReplace.start);
+                const after = content.substring(textRangeToReplace.end);
+                setContent(`${before}${res.data.text}${after}`);
+            }
+        } catch (error) {
+            console.error('AI Edit failed:', error);
+            showAlert('Error', 'Failed to edit content with AI.');
+        } finally {
+            setGenerating(false);
+            setTextRangeToReplace(null);
         }
     };
 
@@ -237,7 +328,7 @@ const TeacherContentManagerScreen = () => {
                         <Surface style={[styles.card, { backgroundColor: isDark ? '#1E293B' : '#fff' }]} elevation={2}>
 
                             {/* Toggle Header */}
-                            <View style={[styles.editorHeader, { borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                            <View style={[styles.editorHeader, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', justifyContent: 'space-between' }]}>
                                 <View style={styles.toggleContainer}>
                                     <TouchableOpacity
                                         style={[styles.toggleBtn, !isPreview && styles.toggleBtnActive]}
@@ -276,6 +367,34 @@ const TeacherContentManagerScreen = () => {
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
+
+                                {!isPreview && (
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <TouchableOpacity
+                                            onPress={openAIEditDialog}
+                                            style={[styles.aiButton, { backgroundColor: '#10B981' }, generating && { opacity: 0.7 }]}
+                                            disabled={generating}
+                                        >
+                                            <MaterialCommunityIcons name="pencil-plus" size={16} color="#fff" style={{ marginRight: 6 }} />
+                                            <Text style={styles.aiButtonText}>Edit with AI</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            onPress={handleAIGenerate}
+                                            style={[styles.aiButton, generating && { opacity: 0.7 }]}
+                                            disabled={generating}
+                                        >
+                                            {generating ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <>
+                                                    <MaterialCommunityIcons name="magic-staff" size={16} color="#fff" style={{ marginRight: 6 }} />
+                                                    <Text style={styles.aiButtonText}>Write with AI</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
 
                             {/* Toolbar (Only in Write Mode) */}
@@ -351,7 +470,7 @@ const TeacherContentManagerScreen = () => {
                         <View style={styles.submitSection}>
                             <TouchableOpacity
                                 style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                                onPress={handleSubmit}
+                                onPress={handlePublishPress}
                                 disabled={loading}
                                 activeOpacity={0.8}
                             >
@@ -387,6 +506,102 @@ const TeacherContentManagerScreen = () => {
                 }}
                 buttonText="Back to Dashboard"
             />
+
+            {/* CONFIRM DIALOG */}
+            <Portal>
+                <Dialog visible={confirmVisible} onDismiss={() => setConfirmVisible(false)} style={{ backgroundColor: isDark ? '#1E293B' : '#fff', borderRadius: 16, maxWidth: 500, width: '100%', alignSelf: 'center' }}>
+                    <Dialog.Icon icon="book-check-outline" color="#4F46E5" size={40} />
+                    <Dialog.Title style={{ textAlign: 'center', color: isDark ? '#fff' : '#1E293B' }}>Publish Chapter?</Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={{ textAlign: 'center', color: isDark ? '#CBD5E1' : '#475569' }}>
+                            Are you sure you want to publish "{title}" for Class {selectedClass}?
+                        </Paragraph>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 24 }}>
+                        <Button
+                            mode="outlined"
+                            onPress={() => setConfirmVisible(false)}
+                            textColor={isDark ? '#CBD5E1' : '#64748B'}
+                            style={{ flex: 1, marginRight: 8, borderColor: isDark ? '#475569' : '#E2E8F0' }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={confirmPublish}
+                            buttonColor="#4F46E5"
+                            style={{ flex: 1, marginLeft: 8 }}
+                        >
+                            Confirm
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+
+            {/* AI EDIT DIALOG */}
+            <Portal>
+                <Dialog visible={showAIEditDialog} onDismiss={() => setShowAIEditDialog(false)} style={{ backgroundColor: isDark ? '#1E293B' : '#fff', borderRadius: 16, maxWidth: 500, width: '100%', alignSelf: 'center' }}>
+                    <Dialog.Icon icon="pencil-plus" color="#10B981" size={40} />
+                    <Dialog.Title style={{ textAlign: 'center', color: isDark ? '#fff' : '#1E293B' }}>Edit with AI</Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={{ textAlign: 'center', color: isDark ? '#CBD5E1' : '#475569', marginBottom: 16 }}>
+                            How should the AI change the selected text?
+                        </Paragraph>
+                        <TextInput
+                            label="Instructions (e.g., Make it shorter, Add examples)"
+                            value={aiInstruction}
+                            onChangeText={setAiInstruction}
+                            mode="outlined"
+                            style={{ backgroundColor: isDark ? '#334155' : '#fff' }}
+                            textColor={isDark ? '#fff' : '#000'}
+                            outlineColor={isDark ? '#475569' : '#E2E8F0'}
+                            activeOutlineColor="#10B981"
+                        />
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 24 }}>
+                        <Button
+                            mode="outlined"
+                            onPress={() => setShowAIEditDialog(false)}
+                            textColor={isDark ? '#CBD5E1' : '#64748B'}
+                            style={{ flex: 1, marginRight: 8, borderColor: isDark ? '#475569' : '#E2E8F0' }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={handleAIEditConfirm}
+                            buttonColor="#10B981"
+                            style={{ flex: 1, marginLeft: 8 }}
+                            disabled={!aiInstruction}
+                        >
+                            Generate
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+
+            {/* ALERT DIALOG */}
+            <Portal>
+                <Dialog visible={alertVisible} onDismiss={() => setAlertVisible(false)} style={{ backgroundColor: isDark ? '#1E293B' : '#fff', borderRadius: 16, maxWidth: 400, width: '100%', alignSelf: 'center' }}>
+                    <Dialog.Icon icon="alert-circle-outline" color="#F59E0B" size={40} />
+                    <Dialog.Title style={{ textAlign: 'center', color: isDark ? '#fff' : '#1E293B' }}>{alertTitle}</Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={{ textAlign: 'center', color: isDark ? '#CBD5E1' : '#475569' }}>
+                            {alertMessage}
+                        </Paragraph>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'center', paddingBottom: 24 }}>
+                        <Button
+                            mode="contained"
+                            onPress={() => setAlertVisible(false)}
+                            buttonColor="#4F46E5"
+                            style={{ minWidth: 100 }}
+                        >
+                            OK
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </ScreenBackground>
     );
 };
@@ -498,6 +713,20 @@ const styles = StyleSheet.create({
     },
     toggleTextActive: {
         fontWeight: 'bold',
+    },
+    aiButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#8B5CF6',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        elevation: 2,
+    },
+    aiButtonText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
     },
     toolbar: {
         flexDirection: 'row',

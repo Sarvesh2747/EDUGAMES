@@ -1,7 +1,51 @@
 const Lesson = require('../models/Lesson');
 const User = require('../models/User');
 const NodeCache = require('node-cache');
+const axios = require('axios'); // Import axios for Mistral
 const lessonCache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
+
+// @desc    Generate Lesson Content with AI (Mistral)
+// @route   POST /api/lessons/generate
+// @access  Private (Teacher)
+const generateLessonAI = async (req, res) => {
+    try {
+        const { topic, subject, level } = req.body;
+
+        if (!process.env.MISTRAL_API_KEY) {
+            return res.status(500).json({ message: 'AI configuration missing' });
+        }
+
+        const prompt = `Create a detailed educational lesson about "${topic}" for ${subject} (Level: ${level}). Include sections: Introduction, Key Concepts, Real-world Examples, and a Summary. Format in Markdown.`;
+
+        const response = await axios.post(
+            'https://api.mistral.ai/v1/chat/completions',
+            {
+                model: "mistral-tiny",
+                messages: [
+                    { role: "system", content: "You are an expert teacher's assistant." },
+                    { role: "user", content: prompt }
+                ],
+                max_tokens: 1500
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+                }
+            }
+        );
+
+        if (response.data?.choices?.[0]?.message?.content) {
+            res.json({ content: response.data.choices[0].message.content });
+        } else {
+            throw new Error('No content generated');
+        }
+
+    } catch (error) {
+        console.error('AI Lesson Gen Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to generate lesson' });
+    }
+};
 
 // @desc    Get all lessons
 // @route   GET /api/lessons
@@ -61,4 +105,4 @@ const completeLesson = async (req, res) => {
     }
 };
 
-module.exports = { getLessons, getLessonById, completeLesson };
+module.exports = { getLessons, getLessonById, completeLesson, generateLessonAI };

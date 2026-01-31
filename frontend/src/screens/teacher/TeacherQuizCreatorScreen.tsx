@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, TextInput, RadioButton, ActivityIndicator, Surface, FAB } from 'react-native-paper';
+import { Text, TextInput, RadioButton, ActivityIndicator, Surface, FAB, Portal, Dialog, Paragraph, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,10 +34,60 @@ const TeacherQuizCreatorScreen = () => {
     const [selectedClass, setSelectedClass] = useState(quizToEdit?.classNumber || '6');
     const [subject, setSubject] = useState(quizToEdit?.subject || 'Math');
 
+    // AI Gen State
+    const [showAIDialog, setShowAIDialog] = useState(false);
+    const [aiTopic, setAiTopic] = useState('');
+    const [aiNumQuestions, setAiNumQuestions] = useState('5');
+    const [aiDifficulty, setAiDifficulty] = useState('Medium');
+    const [generating, setGenerating] = useState(false);
+
+    // Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertTitle, setAlertTitle] = useState('');
+    const [alertMessage, setAlertMessage] = useState('');
+
+    const showAlert = (title: string, message: string) => {
+        setAlertTitle(title);
+        setAlertMessage(message);
+        setAlertVisible(true);
+    };
+
     // Questions
     const [questions, setQuestions] = useState(quizToEdit?.questions || [
         { question: '', options: ['', '', '', ''], correctIndex: 0 }
     ]);
+
+    const handleAIGenerate = async () => {
+        if (!aiTopic) {
+            showAlert('Error', 'Please enter a topic');
+            return;
+        }
+
+        setShowAIDialog(false);
+        setGenerating(true);
+
+        try {
+            const res = await api.post('/quizzes/generate-ai', {
+                topic: aiTopic,
+                classLevel: selectedClass,
+                difficulty: aiDifficulty,
+                numQuestions: parseInt(aiNumQuestions) || 5
+            });
+
+            if (Array.isArray(res.data) && res.data.length > 0) {
+                setQuestions(res.data);
+                showAlert('Success', `Generated ${res.data.length} questions! Review and edit them below.`);
+                // Do NOT show SuccessModal here, as it triggers navigation.goBack()
+            } else {
+                showAlert('Error', 'AI returned no questions. Try a different topic.');
+            }
+        } catch (error) {
+            console.error('AI Quiz Gen Failed:', error);
+            showAlert('Error', 'Failed to generate quiz');
+        } finally {
+            setGenerating(false);
+        }
+    };
 
     const handleAddQuestion = () => {
         setQuestions([...questions, { question: '', options: ['', '', '', ''], correctIndex: 0 }]);
@@ -64,18 +114,18 @@ const TeacherQuizCreatorScreen = () => {
 
     const handleSubmit = async () => {
         if (!title || !subject || !selectedClass) {
-            Alert.alert('Error', 'Please fill in all quiz details');
+            showAlert('Error', 'Please fill in all quiz details');
             return;
         }
 
         // Validate questions
         for (let i = 0; i < questions.length; i++) {
             if (!questions[i].question) {
-                Alert.alert('Error', `Question ${i + 1} is missing text`);
+                showAlert('Error', `Question ${i + 1} is missing text`);
                 return;
             }
             if (questions[i].options.some((opt: string) => !opt)) {
-                Alert.alert('Error', `Question ${i + 1} has empty options`);
+                showAlert('Error', `Question ${i + 1} has empty options`);
                 return;
             }
         }
@@ -105,7 +155,7 @@ const TeacherQuizCreatorScreen = () => {
             }
         } catch (error) {
             console.error('Failed to save quiz:', error);
-            Alert.alert('Error', 'Failed to save quiz');
+            showAlert('Error', 'Failed to save quiz');
         } finally {
             setLoading(false);
         }
@@ -193,6 +243,25 @@ const TeacherQuizCreatorScreen = () => {
                                     </ScrollView>
                                 </View>
                             </View>
+
+                            <TouchableOpacity
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: isDark ? '#334155' : '#F1F5F9',
+                                    padding: 12,
+                                    borderRadius: 8,
+                                    marginTop: 16
+                                }}
+                                onPress={() => {
+                                    setAiTopic(title || (subject ? `${subject} for Class ${selectedClass}` : ''));
+                                    setShowAIDialog(true);
+                                }}
+                            >
+                                <MaterialCommunityIcons name="magic-staff" size={20} color="#4F46E5" style={{ marginRight: 8 }} />
+                                <Text style={{ color: '#4F46E5', fontWeight: '600' }}>Auto-Generate with AI</Text>
+                            </TouchableOpacity>
                         </Surface>
                     </Animated.View>
 
@@ -284,7 +353,107 @@ const TeacherQuizCreatorScreen = () => {
                 onClose={handleSuccessClose}
                 buttonText="Back to Dashboard"
             />
-        </ScreenBackground>
+
+            {/* AI CONFIG DIALOG */}
+            <Surface style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+                !showAIDialog && { display: 'none' }
+            ]}>
+                <Surface style={{ width: '90%', maxWidth: 400, borderRadius: 16, padding: 24, backgroundColor: isDark ? '#1E293B' : '#fff' }}>
+                    <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, color: isDark ? '#fff' : '#1F2937', textAlign: 'center' }}>
+                        Generate Quiz with AI
+                    </Text>
+
+                    <TextInput
+                        label="Topic"
+                        value={aiTopic}
+                        onChangeText={setAiTopic}
+                        mode="outlined"
+                        style={{ marginBottom: 16, backgroundColor: isDark ? '#334155' : '#fff' }}
+                        textColor={isDark ? '#fff' : '#000'}
+                    />
+
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                        <TextInput
+                            label="Questions"
+                            value={aiNumQuestions}
+                            onChangeText={setAiNumQuestions}
+                            keyboardType="numeric"
+                            mode="outlined"
+                            style={{ flex: 1, backgroundColor: isDark ? '#334155' : '#fff' }}
+                            textColor={isDark ? '#fff' : '#000'}
+                        />
+                        <View style={{ flex: 1 }}>
+                            {/* Simple Difficulty Toggle for now */}
+                            <Text style={{ marginBottom: 4, color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 }}>Difficulty</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                {['Easy', 'Medium', 'Hard'].map(d => (
+                                    <TouchableOpacity
+                                        key={d}
+                                        onPress={() => setAiDifficulty(d)}
+                                        style={{
+                                            padding: 8,
+                                            backgroundColor: aiDifficulty === d ? '#4F46E5' : (isDark ? '#334155' : '#F1F5F9'),
+                                            borderRadius: 6,
+                                            marginRight: 4
+                                        }}
+                                    >
+                                        <Text style={{ color: aiDifficulty === d ? '#fff' : (isDark ? '#CBD5E1' : '#64748B'), fontSize: 12 }}>{d}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                        <TouchableOpacity onPress={() => setShowAIDialog(false)} style={{ padding: 10 }}>
+                            <Text style={{ color: isDark ? '#CBD5E1' : '#64748B' }}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleAIGenerate}
+                            style={{ backgroundColor: '#4F46E5', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 }}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Generate</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Surface>
+            </Surface>
+
+            {/* Loading Overlay */}
+            {
+                generating && (
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 110 }]}>
+                        <ActivityIndicator size="large" color="#4F46E5" />
+                        <Text style={{ color: '#fff', marginTop: 16, fontWeight: 'bold' }}>Generating Quiz...</Text>
+                    </View>
+                )
+            }
+
+            {/* ALERT DIALOG */}
+            <Portal>
+                <Dialog visible={alertVisible} onDismiss={() => setAlertVisible(false)} style={{ backgroundColor: isDark ? '#1E293B' : '#fff', borderRadius: 16, maxWidth: 400, width: '100%', alignSelf: 'center' }}>
+                    <Dialog.Icon icon={alertTitle === 'Success' ? 'check-circle-outline' : 'alert-circle-outline'} color={alertTitle === 'Success' ? '#10B981' : '#F59E0B'} size={40} />
+                    <Dialog.Title style={{ textAlign: 'center', color: isDark ? '#fff' : '#1E293B' }}>{alertTitle}</Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={{ textAlign: 'center', color: isDark ? '#CBD5E1' : '#475569' }}>
+                            {alertMessage}
+                        </Paragraph>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'center', paddingBottom: 24 }}>
+                        <Button
+                            mode="contained"
+                            onPress={() => setAlertVisible(false)}
+                            buttonColor="#4F46E5"
+                            style={{ minWidth: 100 }}
+                        >
+                            OK
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+
+        </ScreenBackground >
     );
 };
 

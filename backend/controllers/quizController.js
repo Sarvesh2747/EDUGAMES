@@ -79,6 +79,62 @@ const submitQuizResult = async (req, res) => {
     }
 };
 
+// @desc    Generate Quiz with AI (Mistral)
+// @route   POST /api/quizzes/generate-ai
+// @access  Private
+const axios = require('axios');
+const generateQuizAI = async (req, res) => {
+    try {
+        const { topic, classLevel, difficulty, numQuestions } = req.body;
+        const apiKey = process.env.MISTRAL_API_KEY;
+        const count = numQuestions || 5;
+
+        const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" for Class ${classLevel} (${difficulty} difficulty). Return ONLY a raw JSON array (no markdown code blocks) with objects containing: "question", "options" (array of 4 strings), and "correctIndex" (number 0-3). Ensure valid JSON syntax: escape all double quotes inside strings (e.g., \\"example\\").`;
+
+        const response = await axios.post(
+            'https://api.mistral.ai/v1/chat/completions',
+            {
+                model: "mistral-tiny",
+                messages: [
+                    { role: "system", content: "You are a quiz generation API. Output ONLY valid JSON. Do not use markdown formatting." },
+                    { role: "user", content: prompt }
+                ],
+                response_format: { type: "json_object" }
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                timeout: 60000 // 60 seconds timeout
+            }
+        );
+
+        let content = response.data.choices[0].message.content;
+
+        // Cleanup: Remove markdown code blocks if present
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        const parsed = JSON.parse(content);
+
+        // Handle if wrapper object exists (e.g. { questions: [...] })
+        let finalQuestions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+
+        // Ensure structure matches frontend expectation: { question, options, correctIndex }
+        finalQuestions = finalQuestions.map(q => ({
+            question: q.question,
+            options: q.options,
+            correctIndex: typeof q.correctIndex === 'number' ? q.correctIndex : 0 // Fallback if AI messes up
+        }));
+
+        res.json(finalQuestions);
+
+    } catch (error) {
+        console.error('Quiz Gen Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to generate quiz' });
+    }
+};
+
 const QuizQuestion = require('../models/QuizQuestion');
 
 // @desc    Get quiz by topic (class, subject, chapter, subchapter)
@@ -132,4 +188,4 @@ const getTopicQuiz = async (req, res) => {
     }
 };
 
-module.exports = { getRandomQuiz, submitQuizResult, getTopicQuiz };
+module.exports = { getRandomQuiz, submitQuizResult, getTopicQuiz, generateQuizAI };

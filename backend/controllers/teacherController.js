@@ -487,6 +487,61 @@ const getStudentsByClass = async (req, res) => {
     }
 };
 
+// @desc    Delete a student
+// @route   DELETE /api/teacher/student/:id
+// @access  Private/Teacher
+const deleteStudent = async (req, res) => {
+    try {
+        const student = await User.findById(req.params.id);
+
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        // Ensure student belongs to this teacher
+        if (student.teacherId && student.teacherId.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized to delete this student' });
+        }
+
+        await student.deleteOne();
+        res.json({ message: 'Student removed' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update a student
+// @route   PUT /api/teacher/student/:id
+// @access  Private/Teacher
+const updateStudent = async (req, res) => {
+    try {
+        const { name, rollNo, status } = req.body;
+        const student = await User.findById(req.params.id);
+
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        // Ensure student belongs to this teacher
+        if (student.teacherId && student.teacherId.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized to update this student' });
+        }
+
+        student.name = name || student.name;
+        student.rollNo = rollNo || student.rollNo;
+
+        // Only update status if provided
+        if (status) {
+            student.status = status;
+        }
+
+        const updatedStudent = await student.save();
+        res.json(updatedStudent);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getTeacherStats,
     createQuiz,
@@ -500,6 +555,8 @@ module.exports = {
     deleteQuiz,
     deleteChapter,
     updateQuiz,
-    getAllChapters, // New
-    getStudentsByClass // New
+    getAllChapters,
+    getStudentsByClass,
+    deleteStudent,
+    updateStudent // New
 };

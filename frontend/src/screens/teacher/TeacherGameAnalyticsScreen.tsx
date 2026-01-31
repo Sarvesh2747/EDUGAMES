@@ -88,20 +88,7 @@ const TeacherGameAnalyticsScreen = () => {
                 <View style={[styles.contentContainer, isDesktop && { maxWidth: maxContentWidth, alignSelf: 'center', width: '100%' }]}>
 
                     {/* Overview Card */}
-                    <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.overviewCard}>
-                        <LinearGradient
-                            colors={['#667eea', '#764ba2']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.overviewGradient}
-                        >
-                            <MaterialCommunityIcons name="gamepad-variant" size={40} color="rgba(255,255,255,0.9)" />
-                            <Text style={styles.overviewTitle}>Class Gaming Overview</Text>
-                            <Text style={styles.overviewText}>
-                                Track how your students are mastering educational games and building skills through play.
-                            </Text>
-                        </LinearGradient>
-                    </Animated.View>
+
 
                     {/* Stats Grid */}
                     {classStats.length > 0 && (

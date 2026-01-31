@@ -31,10 +31,20 @@ const QuizScreen = ({ navigation, route }: any) => {
     const { quizData, previewMode } = (route.params as any) || {};
 
     useEffect(() => {
+        // Hide Tab Bar when entering quiz mode for immersive experience
+        navigation.getParent()?.setOptions({
+            tabBarStyle: { display: 'none' }
+        });
+
         loadQuiz();
         soundManager.initialize();
+
         return () => {
             soundManager.cleanup();
+            // Restore Tab Bar when leaving
+            navigation.getParent()?.setOptions({
+                tabBarStyle: { display: 'flex' }
+            });
         };
     }, []);
 
@@ -157,43 +167,50 @@ const QuizScreen = ({ navigation, route }: any) => {
     return (
         <ScreenBackground style={styles.container}>
             <ScrollView
-                contentContainerStyle={[styles.content, containerStyle, { maxWidth: 800, alignSelf: 'center', width: '100%', paddingHorizontal: isMobile ? spacing.md : spacing.xl }]}
+                // MAX WIDTH CONSTRAINT ADDED HERE (maxWidth: 700)
+                contentContainerStyle={[styles.content, containerStyle, { maxWidth: 700, alignSelf: 'center', width: '100%', paddingHorizontal: isMobile ? spacing.md : spacing.xl }]}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header */}
-                <LinearGradient
-                    colors={['#6366F1', '#8B5CF6', '#A855F7']}
-                    style={[styles.headerBackground, { paddingTop: insets.top + spacing.md }]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                >
-                    <View style={styles.headerContent}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
-                            <MaterialCommunityIcons name="close" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <View style={styles.progressContainer}>
-                            <View style={styles.progressHeader}>
-                                <Text variant="titleMedium" style={{ color: 'rgba(255,255,255,0.9)', fontWeight: '700' }}>
-                                    Question {currentQuestionIndex + 1}
-                                </Text>
-                                <Text variant="titleMedium" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                                    / {quiz.questions.length}
-                                </Text>
-                            </View>
-                            <View style={styles.progressBarContainer}>
-                                <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                {/* Modern Header */}
+                <Surface style={[styles.headerCard, { paddingTop: insets.top + spacing.sm }]} elevation={4}>
+                    <LinearGradient
+                        colors={isDark ? ['#4F46E5', '#7C3AED'] : ['#6366F1', '#8B5CF6']}
+                        style={styles.headerGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        {/* Top Row: Close & Score (Optional) */}
+                        <View style={styles.headerTopRow}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+                                <MaterialCommunityIcons name="close" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <View style={styles.chipContainer}>
+                                <MaterialCommunityIcons name="clock-outline" size={16} color="rgba(255,255,255,0.8)" style={{ marginRight: 4 }} />
+                                <Text style={styles.chipText}>Quiz Mode</Text>
                             </View>
                         </View>
-                    </View>
-                </LinearGradient>
+
+                        {/* Progress Section */}
+                        <View style={styles.progressSection}>
+                            <View style={styles.questionCounter}>
+                                <Text style={styles.questionCurrent}>{currentQuestionIndex + 1}</Text>
+                                <Text style={styles.questionTotal}>/{quiz.questions.length}</Text>
+                            </View>
+                            <View style={styles.progressBarTrack}>
+                                <Animated.View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                            </View>
+                        </View>
+                    </LinearGradient>
+                </Surface>
 
                 {/* Question Card */}
                 <Animated.View
                     key={currentQuestionIndex}
                     entering={FadeInRight.duration(400)}
+                    style={styles.questionContainer}
                 >
-                    <Surface style={[styles.questionCard, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : '#fff' }]} elevation={2}>
-                        <Text variant="headlineSmall" style={[styles.questionText, { color: isDark ? '#fff' : '#333' }]}>
+                    <Surface style={[styles.questionCard, { backgroundColor: isDark ? '#1E293B' : '#fff' }]} elevation={2}>
+                        <Text variant="headlineSmall" style={[styles.questionText, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
                             {currentQuestion.question}
                         </Text>
                     </Surface>
@@ -233,35 +250,35 @@ const QuizScreen = ({ navigation, route }: any) => {
                     >
                         <Surface style={[
                             styles.feedbackCard,
-                            { borderLeftColor: isCorrect ? '#4CAF50' : '#F44336', backgroundColor: isDark ? '#1E293B' : '#fff' }
-                        ]} elevation={4}>
+                            { borderLeftColor: isCorrect ? '#10B981' : '#EF4444', backgroundColor: isDark ? '#1E293B' : '#fff' }
+                        ]} elevation={3}>
                             <View style={styles.feedbackContent}>
                                 <View style={styles.feedbackHeader}>
                                     <MaterialCommunityIcons
                                         name={isCorrect ? "check-circle" : "close-circle"}
-                                        size={24}
-                                        color={isCorrect ? "#4CAF50" : "#F44336"}
+                                        size={28}
+                                        color={isCorrect ? "#10B981" : "#EF4444"}
                                     />
                                     <Text variant="titleMedium" style={{
-                                        color: isCorrect ? "#4CAF50" : "#F44336",
+                                        color: isCorrect ? "#10B981" : "#EF4444",
                                         fontWeight: 'bold',
-                                        marginLeft: 8
+                                        marginLeft: 12
                                     }}>
                                         {isCorrect ? "Correct!" : "Incorrect"}
                                     </Text>
                                 </View>
                                 {!isCorrect && (
-                                    <Text variant="bodyMedium" style={{ marginTop: 4, color: isDark ? '#ccc' : '#666' }}>
-                                        The correct answer is: <Text style={{ fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>{currentQuestion.options[currentQuestion.correctIndex]}</Text>
+                                    <Text variant="bodyMedium" style={{ marginTop: 8, color: isDark ? '#94A3B8' : '#64748B', marginLeft: 40 }}>
+                                        Correct answer: <Text style={{ fontWeight: 'bold', color: isDark ? '#F1F5F9' : '#1E293B' }}>{currentQuestion.options[currentQuestion.correctIndex]}</Text>
                                     </Text>
                                 )}
                             </View>
                             <Button
                                 mode="contained"
                                 onPress={handleNext}
-                                style={[styles.nextButton, { backgroundColor: isCorrect ? '#4CAF50' : paperTheme.colors.primary }]}
-                                contentStyle={{ height: 48 }}
-                                labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                                style={[styles.nextButton, { backgroundColor: isCorrect ? '#10B981' : paperTheme.colors.primary }]}
+                                contentStyle={{ height: 50 }}
+                                labelStyle={{ fontSize: 16, fontWeight: '700' }}
                             >
                                 {currentQuestionIndex === quiz.questions.length - 1 ? 'Finish' : 'Next'}
                             </Button>
@@ -287,66 +304,107 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    headerBackground: {
-        paddingBottom: spacing.xxl + 20,
-        paddingTop: spacing.md,
+    headerCard: {
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-        marginBottom: 24,
+        marginBottom: 32,
+        overflow: 'hidden',
+        marginHorizontal: 12,
+        marginTop: 8,
+        borderRadius: 32, // Floating header look
     },
-    headerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    headerGradient: {
+        paddingHorizontal: spacing.xl,
+        paddingBottom: spacing.xl,
     },
-    closeButton: {
-        padding: 8,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 12,
-        marginRight: spacing.md,
-    },
-    progressContainer: {
-        flex: 1,
-    },
-    progressHeader: {
+    headerTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: spacing.xs,
+        alignItems: 'center',
+        marginBottom: 20,
     },
-    progressBarContainer: {
+    iconButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    chipText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 12,
+    },
+    progressSection: {
+        alignItems: 'center',
+    },
+    questionCounter: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        marginBottom: 12,
+    },
+    questionCurrent: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#fff',
+        lineHeight: 32,
+    },
+    questionTotal: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.7)',
+        marginLeft: 4,
+    },
+    progressBarTrack: {
         height: 8,
-        backgroundColor: 'rgba(0,0,0,0.2)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
         borderRadius: 4,
+        width: '100%',
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: '#FFD700',
+        backgroundColor: '#FACC15', // Yellow/Gold pop
         borderRadius: 4,
+    },
+    questionContainer: {
+        paddingHorizontal: spacing.md,
     },
     questionCard: {
         padding: spacing.xl,
         borderRadius: 24,
         marginBottom: spacing.xl,
-        minHeight: 140,
+        minHeight: 160,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)', // Subtle border for darkness
     },
     questionText: {
         fontWeight: '700',
-        color: '#333',
         textAlign: 'center',
-        lineHeight: 32,
+        lineHeight: 34,
     },
     optionsContainer: {
         gap: spacing.md,
         marginBottom: spacing.xl,
     },
     feedbackSection: {
-        marginTop: spacing.lg,
+        paddingHorizontal: spacing.md,
+        marginTop: spacing.md,
     },
     feedbackCard: {
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 20,
+        padding: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -361,8 +419,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     nextButton: {
-        borderRadius: 12,
-        minWidth: 100,
+        borderRadius: 16,
+        minWidth: 110,
+        elevation: 2,
     },
 });
 

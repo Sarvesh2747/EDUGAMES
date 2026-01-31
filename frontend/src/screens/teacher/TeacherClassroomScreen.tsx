@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, Text, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, useWindowDimensions, Modal, Pressable } from 'react-native';
+import { Portal, Dialog, Button, Paragraph } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +21,35 @@ const TeacherClassroomScreen = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
+
+    // Delete Dialog State
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<any>(null);
+
+    const handleDeletePress = (item: any) => {
+        setItemToDelete(item);
+        setShowDeleteDialog(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
+
+        try {
+            if (itemToDelete.type === 'quiz') {
+                await api.delete(`/teacher/quiz/${itemToDelete._id}`);
+            } else {
+                await api.delete(`/teacher/chapter/${itemToDelete._id}`);
+            }
+            // Refresh content
+            await fetchContent();
+        } catch (error) {
+            console.error('Delete error:', error);
+            Alert.alert('Error', 'Failed to delete content');
+        } finally {
+            setShowDeleteDialog(false);
+            setItemToDelete(null);
+        }
+    };
 
     useEffect(() => {
         fetchContent();
@@ -166,31 +196,7 @@ const TeacherClassroomScreen = () => {
 
                                                 <TouchableOpacity
                                                     style={[styles.actionButton, styles.deleteButton]}
-                                                    onPress={() => {
-                                                        Alert.alert(
-                                                            'Delete Content',
-                                                            'Are you sure you want to delete this?',
-                                                            [
-                                                                { text: 'Cancel', style: 'cancel' },
-                                                                {
-                                                                    text: 'Delete',
-                                                                    style: 'destructive',
-                                                                    onPress: async () => {
-                                                                        try {
-                                                                            if (item.type === 'quiz') {
-                                                                                await api.delete(`/teacher/quiz/${item._id}`);
-                                                                            } else {
-                                                                                await api.delete(`/teacher/chapter/${item._id}`);
-                                                                            }
-                                                                            fetchContent();
-                                                                        } catch (error) {
-                                                                            Alert.alert('Error', 'Failed to delete content');
-                                                                        }
-                                                                    }
-                                                                }
-                                                            ]
-                                                        );
-                                                    }}
+                                                    onPress={() => handleDeletePress(item)}
                                                 >
                                                     <MaterialCommunityIcons name="delete" size={18} color="#fff" />
                                                 </TouchableOpacity>
@@ -317,6 +323,68 @@ const TeacherClassroomScreen = () => {
                     </Pressable>
                 </Pressable>
             </Modal>
+            {/* Delete Confirmation Dialog */}
+            <Portal>
+                <Dialog
+                    visible={showDeleteDialog}
+                    onDismiss={() => setShowDeleteDialog(false)}
+                    style={{
+                        backgroundColor: isDark ? '#1E293B' : '#fff',
+                        borderRadius: 16,
+                        maxWidth: 400,
+                        width: '90%',
+                        alignSelf: 'center'
+                    }}
+                >
+                    <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                        <View style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 16,
+                            backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginBottom: 16
+                        }}>
+                            <MaterialCommunityIcons name="delete-outline" size={32} color="#EF4444" />
+                        </View>
+                        <Text style={{
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                            color: isDark ? '#fff' : '#1E293B',
+                            marginBottom: 8
+                        }}>
+                            Delete Content?
+                        </Text>
+                        <Text style={{
+                            fontSize: 14,
+                            color: isDark ? '#94A3B8' : '#64748B',
+                            textAlign: 'center',
+                            paddingHorizontal: 24
+                        }}>
+                            Are you sure you want to delete "{itemToDelete?.title}"? This action cannot be undone.
+                        </Text>
+                    </View>
+                    <Dialog.Actions style={{ paddingHorizontal: 24, paddingBottom: 24, justifyContent: 'space-between' }}>
+                        <Button
+                            mode="outlined"
+                            onPress={() => setShowDeleteDialog(false)}
+                            style={{ flex: 1, marginRight: 8, borderRadius: 8, borderColor: isDark ? '#475569' : '#E2E8F0' }}
+                            textColor={isDark ? '#CBD5E1' : '#64748B'}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={confirmDelete}
+                            style={{ flex: 1, marginLeft: 8, borderRadius: 8, backgroundColor: '#EF4444' }}
+                            textColor="#fff"
+                        >
+                            Delete
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </ScreenBackground>
     );
 };

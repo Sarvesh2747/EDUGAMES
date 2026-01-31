@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { Surface, Button, Text } from 'react-native-paper';
+import { Surface, Button, Text, Portal, Dialog, Paragraph } from 'react-native-paper';
 import videoService, { Video } from '../../services/videoService';
 import { useAuth } from '../../context/AuthContext';
 import ScreenBackground from '../../components/ScreenBackground';
@@ -48,7 +48,7 @@ const TeacherVideoManagerScreen = ({ navigation }: any) => {
     const classes = ['6', '7', '8', '9', '10'];
 
     // Delete State
-    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [videoToDelete, setVideoToDelete] = useState<string | null>(null);
 
     useEffect(() => {
@@ -99,7 +99,10 @@ const TeacherVideoManagerScreen = ({ navigation }: any) => {
 
     const handleSubmit = async () => {
         if (!title || !url || !subject || !classNum) {
-            Alert.alert('Missing Fields', 'Please fill all required fields (Title, URL, Subject, Class).');
+            // Use simple Alert for validation as it's less critical, or replace if strictly needed.
+            // For now sticking to console or a toast would be better, but we'll leave basic alert for validation 
+            // as it's blocking. However, to be consistent let's just allow it or rely on UI feedback.
+            alert('Please fill all required fields');
             return;
         }
 
@@ -125,16 +128,17 @@ const TeacherVideoManagerScreen = ({ navigation }: any) => {
 
             if (editingVideo) {
                 await videoService.updateVideo(editingVideo._id, payload);
-                Alert.alert('Success', 'Video updated successfully');
+                // Removed Success Alert to avoid web issues, just close modal
             } else {
                 await videoService.createVideo(payload);
-                Alert.alert('Success', 'Video added successfully');
+                // Removed Success Alert
             }
 
             setModalVisible(false);
             loadVideos();
         } catch (error) {
-            Alert.alert('Error', 'Failed to save video. Please try again.');
+            console.error('Save error', error);
+            alert('Failed to save video');
         } finally {
             setIsSubmitting(false);
         }
@@ -147,10 +151,11 @@ const TeacherVideoManagerScreen = ({ navigation }: any) => {
         try {
             await videoService.deleteVideo(videoToDelete);
             setVideos(prev => prev.filter(v => v._id !== videoToDelete));
-            setDeleteModalVisible(false);
+            setDeleteDialogVisible(false);
             setVideoToDelete(null);
         } catch (error) {
-            Alert.alert('Error', 'Failed to delete video.');
+            console.error(error);
+            alert('Failed to delete video');
         } finally {
             setIsSubmitting(false);
         }
@@ -212,7 +217,7 @@ const TeacherVideoManagerScreen = ({ navigation }: any) => {
                             <TouchableOpacity
                                 onPress={() => {
                                     setVideoToDelete(item._id);
-                                    setDeleteModalVisible(true);
+                                    setDeleteDialogVisible(true);
                                 }}
                                 style={[styles.actionBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }]}
                             >
@@ -382,38 +387,69 @@ const TeacherVideoManagerScreen = ({ navigation }: any) => {
                     </View>
                 </Modal>
 
-                {/* Delete Confirmation */}
-                <Modal visible={deleteModalVisible} transparent animationType="fade">
-                    <View style={styles.deleteOverlay}>
-                        <Surface style={[styles.deleteModal, { backgroundColor: isDark ? '#1E293B' : '#fff' }]}>
-                            <View style={styles.deleteIcon}>
-                                <MaterialCommunityIcons name="trash-can-outline" size={32} color="#EF4444" />
+                {/* Delete Confirmation Dialog */}
+                <Portal>
+                    <Dialog
+                        visible={deleteDialogVisible}
+                        onDismiss={() => setDeleteDialogVisible(false)}
+                        style={{
+                            backgroundColor: isDark ? '#1E293B' : '#fff',
+                            borderRadius: 16,
+                            maxWidth: 400,
+                            width: '90%',
+                            alignSelf: 'center'
+                        }}
+                    >
+                        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                            <View style={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: 16,
+                                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginBottom: 16
+                            }}>
+                                <MaterialCommunityIcons name="delete-outline" size={32} color="#EF4444" />
                             </View>
-                            <Text style={[styles.deleteTitle, { color: isDark ? '#fff' : '#1F2937' }]}>Delete Video</Text>
-                            <Text style={[styles.deleteMsg, { color: isDark ? '#94A3B8' : '#6B7280' }]}>
-                                Are you sure you want to delete this video? This cannot be undone.
+                            <Text style={{
+                                fontSize: 20,
+                                fontWeight: 'bold',
+                                color: isDark ? '#fff' : '#1E293B',
+                                marginBottom: 8
+                            }}>
+                                Delete Video?
                             </Text>
-                            <View style={styles.deleteActions}>
-                                <Button
-                                    mode="outlined"
-                                    onPress={() => setDeleteModalVisible(false)}
-                                    style={{ flex: 1, borderColor: isDark ? '#334155' : '#E5E7EB' }}
-                                    textColor={isDark ? '#CBD5E1' : '#4B5563'}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    mode="contained"
-                                    onPress={confirmDelete}
-                                    style={{ flex: 1, backgroundColor: '#EF4444', marginLeft: 10 }}
-                                    loading={isSubmitting}
-                                >
-                                    Delete
-                                </Button>
-                            </View>
-                        </Surface>
-                    </View>
-                </Modal>
+                            <Text style={{
+                                fontSize: 14,
+                                color: isDark ? '#94A3B8' : '#64748B',
+                                textAlign: 'center',
+                                paddingHorizontal: 24
+                            }}>
+                                Are you sure you want to delete this video? This action cannot be undone.
+                            </Text>
+                        </View>
+                        <Dialog.Actions style={{ paddingHorizontal: 24, paddingBottom: 24, justifyContent: 'space-between' }}>
+                            <Button
+                                mode="outlined"
+                                onPress={() => setDeleteDialogVisible(false)}
+                                style={{ flex: 1, marginRight: 8, borderRadius: 8, borderColor: isDark ? '#475569' : '#E2E8F0' }}
+                                textColor={isDark ? '#CBD5E1' : '#64748B'}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                mode="contained"
+                                onPress={confirmDelete}
+                                style={{ flex: 1, marginLeft: 8, borderRadius: 8, backgroundColor: '#EF4444' }}
+                                textColor="#fff"
+                                loading={isSubmitting}
+                            >
+                                Delete
+                            </Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
 
             </View>
         </ScreenBackground>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Pressable, View } from 'react-native';
 import { Text, useTheme, Surface } from 'react-native-paper';
+import { useAppTheme } from '../context/ThemeContext';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -28,6 +29,7 @@ const QuizOptionButton: React.FC<QuizOptionButtonProps> = ({
     status = 'none',
     disabled = false
 }) => {
+    const { isDark } = useAppTheme();
     const theme = useTheme();
     const scale = useSharedValue(1);
 
@@ -43,22 +45,22 @@ const QuizOptionButton: React.FC<QuizOptionButtonProps> = ({
         transform: [{ scale: scale.value }],
     }));
 
-    let backgroundColor = '#fff';
-    let borderColor = theme.colors.outline;
-    let textColor = theme.colors.onSurface;
-    let badgeColor = '#F5F5F5';
-    let badgeTextColor = '#666';
+    let backgroundColor = isDark ? '#1E293B' : '#fff';
+    let borderColor = isDark ? '#334155' : theme.colors.outline;
+    let textColor = isDark ? '#F8FAFC' : theme.colors.onSurface;
+    let badgeColor = isDark ? '#334155' : '#F5F5F5';
+    let badgeTextColor = isDark ? '#94A3B8' : '#666';
 
     if (status === 'correct') {
-        backgroundColor = '#E8F5E9'; // Light Green
+        backgroundColor = isDark ? 'rgba(76, 175, 80, 0.2)' : '#E8F5E9'; // Light Green
         borderColor = '#4CAF50';      // Green
-        textColor = '#2E7D32';        // Dark Green
+        textColor = '#4CAF50';        // Green text
         badgeColor = '#4CAF50';
         badgeTextColor = '#fff';
     } else if (status === 'wrong') {
-        backgroundColor = '#FFEBEE'; // Light Red
+        backgroundColor = isDark ? 'rgba(244, 67, 54, 0.2)' : '#FFEBEE'; // Light Red
         borderColor = '#F44336';      // Red
-        textColor = '#C62828';        // Dark Red
+        textColor = '#F44336';        // Red text
         badgeColor = '#F44336';
         badgeTextColor = '#fff';
     } else if (isSelected) {

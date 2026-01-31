@@ -11,6 +11,7 @@ import CustomButton from '../../components/ui/CustomButton';
 import { useAppTheme } from '../../context/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import SuccessModal from '../../components/ui/SuccessModal';
 
 const EditStudentScreen = () => {
     const navigation = useNavigation();
@@ -23,10 +24,14 @@ const EditStudentScreen = () => {
     const [rollNo, setRollNo] = useState(student.rollNo);
     const [status, setStatus] = useState(student.status || 'active');
     const [loading, setLoading] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const handleUpdate = async () => {
         if (!name || !rollNo) {
-            Alert.alert('Error', 'Please fill in all fields');
+            // Simple alert for validation is fine, but prefer consistent UI if possible.
+            // Sticking to simple alert for blocking validation to avoid complex UI state for now, 
+            // or replace with a Toast in future.
+            alert('Please fill in all fields');
             return;
         }
 
@@ -37,11 +42,10 @@ const EditStudentScreen = () => {
                 rollNo,
                 status
             });
-            Alert.alert('Success', 'Student updated successfully', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+            setShowSuccessModal(true);
         } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to update student');
+            console.error('Update error:', error);
+            alert(error.response?.data?.message || 'Failed to update student');
         } finally {
             setLoading(false);
         }
@@ -142,6 +146,17 @@ const EditStudentScreen = () => {
                     </Surface>
                 </Animated.View>
             </ScrollView>
+
+            <SuccessModal
+                visible={showSuccessModal}
+                title="Student Updated"
+                message="Student details have been updated successfully."
+                onClose={() => {
+                    setShowSuccessModal(false);
+                    navigation.goBack();
+                }}
+                buttonText="Go Back"
+            />
         </ScreenBackground>
     );
 };

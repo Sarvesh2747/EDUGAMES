@@ -1,78 +1,60 @@
-const { ChatMistralAI } = require("@langchain/mistralai");
-const { PromptTemplate } = require("@langchain/core/prompts");
-const { StringOutputParser } = require("@langchain/core/output_parsers");
+const axios = require('axios');
 
-// Initialize LangChain Mistral Chat Model
-// Initialize LangChain Mistral Chat Model inside handler or lazily to ensure env vars are loaded
-const getModel = () => {
-    const apiKey = process.env.MISTRAL_API_KEY;
-    if (!apiKey) {
-        throw new Error("MISTRAL_API_KEY is missing in environment variables");
-    }
-    return new ChatMistralAI({
-        model: "mistral-small-latest",
-        apiKey: apiKey,
-        maxRetries: 0,
-    });
-};
-
-const askGemini = async (req, res) => {
+// @desc    Generate content using AI
+// @route   POST /api/ai/generate
+// @access  Private
+const generateContent = async (req, res) => {
     try {
-        const { query, context, mode } = req.body;
+        const { prompt } = req.body;
 
-        if (!query) {
-            return res.status(400).json({ error: "Query is required" });
+        if (!prompt) {
+            return res.status(400).json({ message: 'Prompt is required' });
         }
 
-        let template = "";
+        const apiKey = process.env.MISTRAL_API_KEY;
 
-        if (mode === "student_doubt") {
-            template = `You are a helpful and encouraging AI tutor for students (Class 6).
-            Use simple language. Explain concepts clearly.
-            If context is provided, use it to answer the question but you can expound on it.
-            
-            Context: {context}
-            
-            User Question: {query}`;
-        } else if (mode === "app_help") {
-            template = `You are a support assistant for the EduGames app.
-             Help users navigate the app, understand features (Games, Profile, Teacher Dashboard, Offline Mode), and troubleshoot.
-             Refuse to answer non-app related questions.
-             Use the provided context to give specific instructions (e.g., "Go to the Games tab...").
-             
-             Context: {context}
-             
-             User Question: {query}`;
+        if (!apiKey) {
+            console.error('MISTRAL_API_KEY is missing in environment variables');
+            return res.status(500).json({ message: 'AI service configuration error' });
+        }
+
+        // Call Mistral API
+        const response = await axios.post(
+            'https://api.mistral.ai/v1/chat/completions',
+            {
+                model: "mistral-tiny",
+                messages: [
+                    { role: "system", content: "You are a helpful educational assistant for teachers. Generate clear, age-appropriate content for school chapters. Use Markdown formatting." },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 1000
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                timeout: 60000 // 60 seconds timeout
+            }
+        );
+
+        if (response.data && response.data.choices && response.data.choices.length > 0) {
+            const generatedText = response.data.choices[0].message.content;
+            res.json({ text: generatedText });
         } else {
-            template = `You are a helpful assistant.
-            Context: {context}
-            
-            User Question: {query}`;
+            throw new Error('Invalid response from AI provider');
         }
 
-        const model = getModel();
-        const prompt = PromptTemplate.fromTemplate(template);
-        const outputParser = new StringOutputParser();
-        const chain = prompt.pipe(model).pipe(outputParser);
-
-        const contextString = context ? JSON.stringify(context) : "No context provided";
-        const answer = await chain.invoke({
-            context: contextString,
-            query: query
-        });
-
-        res.json({ answer: answer });
     } catch (error) {
-        console.error("AI Error:", error);
-        // Forward status code if available (e.g. from axios/fetch calls within LangChain), otherwise 500
-        const status = error.response?.status || error.status || 500;
-        res.status(status).json({
-            answer: "I'm having trouble connecting to my brain right now.",
-            error: error.message
+        console.error('AI Generation Error:', error.response?.data || error.message);
+        res.status(500).json({
+            message: 'Failed to generate content',
+            error: error.response?.data?.message || error.message
         });
     }
 };
 
 module.exports = {
-    askGemini
+    generateContent
 };

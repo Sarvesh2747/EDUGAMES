@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const aiController = require('../controllers/aiController');
-const { protect } = require('../middleware/auth'); // Assuming we want to protect this
+const { generateContent } = require('../controllers/aiController');
+const { protect } = require('../middleware/auth');
 
-// POST /api/ai/chat
-router.post('/chat', protect, aiController.askGemini);
+router.post('/generate', protect, generateContent);
 
 module.exports = router;

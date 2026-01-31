@@ -163,6 +163,51 @@ const StudentTasksScreen = () => {
             marginTop: spacing.xs,
             textAlign: 'center',
         },
+        tabContainer: {
+            flexDirection: 'row',
+            marginHorizontal: spacing.lg,
+            marginBottom: spacing.md,
+            borderRadius: 16,
+            padding: 4,
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            alignSelf: 'center', // Center tabs within constrained view
+            width: '100%',
+        },
+        tab: {
+            flex: 1,
+            flexDirection: 'row',
+            paddingVertical: 12,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: 12,
+        },
+        activeTab: {
+            backgroundColor: isDark ? '#6366F1' : '#EEF2FF',
+        },
+        tabText: {
+            fontWeight: '600',
+            fontSize: 15,
+        },
+        activeTabText: {
+            color: isDark ? '#fff' : '#4F46E5',
+            fontWeight: 'bold',
+        },
+        badge: {
+            backgroundColor: '#EF4444',
+            borderRadius: 10,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            marginLeft: 6,
+        },
+        badgeText: {
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 'bold',
+        },
     });
 
     useFocusEffect(
@@ -213,6 +258,8 @@ const StudentTasksScreen = () => {
         setRefreshing(false);
     };
 
+    const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'completed': return '#10B981';
@@ -246,13 +293,13 @@ const StudentTasksScreen = () => {
         const iconColor = iconColorMap[task.subject] || '#6366F1';
 
         return (
-            <View key={index} style={[styles.taskCard]}>
+            <View key={index} style={[styles.taskCard, task.status === 'completed' && { opacity: 0.8 }]}>
                 <View style={styles.taskHeader}>
-                    <View style={[styles.taskIcon]}>
-                        <Ionicons name={typeIcon as any} size={26} color={iconColor} />
+                    <View style={[styles.taskIcon, task.status === 'completed' && { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                        <Ionicons name={typeIcon as any} size={26} color={task.status === 'completed' ? '#94A3B8' : iconColor} />
                     </View>
                     <View style={styles.taskInfo}>
-                        <Text style={[styles.taskTitle]}>{typeLabel}: {title}</Text>
+                        <Text style={[styles.taskTitle, task.status === 'completed' && { textDecorationLine: 'line-through', color: isDark ? '#64748B' : '#9CA3AF' }]}>{typeLabel}: {title}</Text>
                         <Text style={[styles.taskDate]}>Assigned: {new Date(task.assignedAt).toLocaleDateString()}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
@@ -338,34 +385,66 @@ const StudentTasksScreen = () => {
 
             {/* Content with Overlap */}
             <View style={{ flex: 1, marginTop: -40 }}>
-                {loading ? (
-                    <ActivityIndicator size="large" color={isDark ? '#6366F1' : '#4F46E5'} style={{ marginTop: 40 }} />
-                ) : (
-                    <ScrollView
-                        contentContainerStyle={[styles.scrollContent, styles.list, { paddingBottom: 120 }]}
-                        refreshControl={
-                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#6366F1' : '#4F46E5'} />
-                        }
-                    >
-                        {isOffline && (
-                            <View style={styles.offlineBadge}>
-                                <Ionicons name="cloud-offline" size={14} color="#fff" />
-                                <Text style={styles.offlineText}>Offline Mode</Text>
-                            </View>
-                        )}
-                        {tasks.length > 0 ? (
-                            tasks.map((task, index) => renderTaskItem(task, index))
-                        ) : (
-                            <View style={styles.emptyState}>
-                                <View style={styles.emptyIconContainer}>
-                                    <Ionicons name="checkmark-circle-outline" size={50} color={isDark ? '#6366F1' : '#4F46E5'} />
+                <View style={{ flex: 1, maxWidth: 800, alignSelf: 'center', width: '100%' }}>
+                    {/* Tabs */}
+                    <View style={[styles.tabContainer, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]}>
+                        <TouchableOpacity
+                            style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
+                            onPress={() => setActiveTab('pending')}
+                        >
+                            <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText, { color: isDark ? '#F1F5F9' : '#333' }]}>To Do</Text>
+                            {tasks.filter(t => t.status === 'pending').length > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{tasks.filter(t => t.status === 'pending').length}</Text>
                                 </View>
-                                <Text style={styles.emptyText}>{t('tasks.noTasks')}</Text>
-                                <Text style={styles.emptySubtext}>Great job staying on top of your work!</Text>
-                            </View>
-                        )}
-                    </ScrollView>
-                )}
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.tab, activeTab === 'completed' && styles.activeTab]}
+                            onPress={() => setActiveTab('completed')}
+                        >
+                            <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText, { color: isDark ? '#F1F5F9' : '#333' }]}>Completed</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color={isDark ? '#6366F1' : '#4F46E5'} style={{ marginTop: 40 }} />
+                    ) : (
+                        <ScrollView
+                            contentContainerStyle={[styles.scrollContent, styles.list, { paddingBottom: 120 }]}
+                            showsVerticalScrollIndicator={false}
+                            refreshControl={
+                                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#6366F1' : '#4F46E5'} />
+                            }
+                        >
+                            {isOffline && (
+                                <View style={styles.offlineBadge}>
+                                    <Ionicons name="cloud-offline" size={14} color="#fff" />
+                                    <Text style={styles.offlineText}>Offline Mode</Text>
+                                </View>
+                            )}
+                            {tasks.filter(t => t.status === activeTab).length > 0 ? (
+                                tasks.filter(t => t.status === activeTab).map((task, index) => renderTaskItem(task, index))
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <View style={styles.emptyIconContainer}>
+                                        <Ionicons
+                                            name={activeTab === 'pending' ? "checkmark-circle-outline" : "list-outline"}
+                                            size={50}
+                                            color={isDark ? '#6366F1' : '#4F46E5'}
+                                        />
+                                    </View>
+                                    <Text style={styles.emptyText}>
+                                        {activeTab === 'pending' ? t('tasks.noTasks') : "No completed tasks yet"}
+                                    </Text>
+                                    <Text style={styles.emptySubtext}>
+                                        {activeTab === 'pending' ? "Great job staying on top of your work!" : "Finish some assignments to see them here."}
+                                    </Text>
+                                </View>
+                            )}
+                        </ScrollView>
+                    )}
+                </View>
             </View>
         </ScreenBackground>
     );
