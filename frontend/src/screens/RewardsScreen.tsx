@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useResponsive } from '../hooks/useResponsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../context/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
 
 const { width } = Dimensions.get('window');
 
@@ -58,41 +59,12 @@ const RewardsScreen = ({ navigation }: any) => {
     const unlockedBadges = badges.filter((b) => b.unlocked);
     const lockedBadges = badges.filter((b) => !b.unlocked);
 
-    // Background Stars (Matches Home)
-    const renderStars = () => {
-        const stars = [];
-        for (let i = 0; i < 40; i++) {
-            stars.push(
-                <View
-                    key={i}
-                    style={{
-                        position: 'absolute',
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 50,
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                        width: Math.random() * 3 + 1,
-                        height: Math.random() * 3 + 1,
-                        opacity: Math.random() * 0.5 + 0.1,
-                    }}
-                />
-            );
-        }
-        return stars;
-    };
+
 
     const styles = createStyles(isDark, insets);
 
     return (
-        <View style={styles.container}>
-            {/* Global Background */}
-            <LinearGradient
-                colors={isDark ? ['#0A1628', '#0F172A'] : ['#F0F9FF', '#E0F2FE']}
-                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
-            {isDark && <View style={styles.starsContainer}>{renderStars()}</View>}
+        <ScreenBackground style={styles.container}>
 
             <ScrollView
                 contentContainerStyle={[styles.content, containerStyle]}
@@ -244,7 +216,7 @@ const RewardsScreen = ({ navigation }: any) => {
                 </View>
                 <View style={{ height: 40 }} />
             </ScrollView>
-        </View>
+        </ScreenBackground>
     );
 };
 

@@ -10,6 +10,7 @@ import { getQueueItems, clearQueue, QueueItem, subscribeToQueue } from '../offli
 import { spacing } from '../theme';
 import { useResponsive } from '../hooks/useResponsive';
 import { useAppTheme } from '../context/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
 
 const SyncScreen = ({ navigation }: any) => {
     const theme = useTheme();
@@ -108,43 +109,16 @@ const SyncScreen = ({ navigation }: any) => {
         }
     };
 
-    const retryCount = queueItems.filter((item) => item.retryCount > 0).length;
 
-    // Background Stars (Matches Home)
-    const renderStars = () => {
-        const stars = [];
-        for (let i = 0; i < 40; i++) {
-            stars.push(
-                <View
-                    key={i}
-                    style={{
-                        position: 'absolute',
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 50,
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                        width: Math.random() * 3 + 1,
-                        height: Math.random() * 3 + 1,
-                        opacity: Math.random() * 0.5 + 0.1,
-                    }}
-                />
-            );
-        }
-        return stars;
-    };
+
+
+
+    const retryCount = queueItems.filter((item) => item.retryCount > 0).length;
 
     const styles = createStyles(isDark, insets);
 
     return (
-        <View style={styles.container}>
-            {/* Global Background */}
-            <LinearGradient
-                colors={isDark ? ['#0A1628', '#0F172A'] : ['#F0F9FF', '#E0F2FE']}
-                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
-            {isDark && <View style={styles.starsContainer}>{renderStars()}</View>}
+        <ScreenBackground style={styles.container}>
 
             <ScrollView
                 contentContainerStyle={[styles.content, containerStyle]}
@@ -309,7 +283,7 @@ const SyncScreen = ({ navigation }: any) => {
 
                 </View>
             </ScrollView>
-        </View>
+        </ScreenBackground>
     );
 };
 
@@ -317,10 +291,8 @@ const createStyles = (isDark: boolean, insets: any) => StyleSheet.create({
     container: {
         flex: 1,
     },
-    starsContainer: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: -1,
-    },
+
+
     content: {
         paddingBottom: 100,
     },

@@ -8,6 +8,7 @@ import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import api from '../services/api';
 import { spacing, borderRadius, theme } from '../theme';
 import { formatDistanceToNow } from 'date-fns';
+import ScreenBackground from '../components/ScreenBackground';
 
 const NotificationScreen = () => {
     const navigation = useNavigation();
@@ -116,11 +117,7 @@ const NotificationScreen = () => {
     );
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#FFFFFF', '#F8FAFC']}
-                style={styles.background}
-            />
+        <ScreenBackground style={styles.container}>
 
             <View style={styles.header}>
                 <TouchableOpacity
@@ -160,21 +157,13 @@ const NotificationScreen = () => {
                     }
                 />
             )}
-        </View>
+        </ScreenBackground>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
-    },
-    background: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
     },
     header: {
         flexDirection: 'row',

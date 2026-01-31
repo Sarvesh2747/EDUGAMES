@@ -11,6 +11,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { spacing, gradients, colors } from '../theme';
 import CustomButton from '../components/ui/CustomButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import ScreenBackground from '../components/ScreenBackground';
 
 import { AVATAR_OPTIONS } from '../data/avatars';
 
@@ -66,7 +67,7 @@ const ProfileScreen = ({ navigation }: any) => {
     };
 
     return (
-        <View style={styles.container}>
+        <ScreenBackground style={styles.container}>
             <ScrollView
                 contentContainerStyle={[styles.content, containerStyle, { flexGrow: 1, flex: 0 }]}
                 showsVerticalScrollIndicator={false}
@@ -420,14 +421,14 @@ const ProfileScreen = ({ navigation }: any) => {
                     </View>
                 </Modal>
             </ScrollView>
-        </View>
+        </ScreenBackground>
     );
 };
 
 const createStyles = (isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+        // backgroundColor: isDark ? '#0F172A' : '#F8FAFC', // Handled by ScreenBackground
     },
     content: {
         paddingBottom: 100,

@@ -9,6 +9,7 @@ import { useAppTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenBackground from '../components/ScreenBackground';
 
 const AVATAR_OPTIONS = [
     { id: 1, source: require('../assets/avatars/avatar_student_1_1763752373295.png'), gradient: ['#FF6B6B', '#FF8E53'] as const },
@@ -66,28 +67,7 @@ const LeaderboardScreen = () => {
         }
     };
 
-    // Starry background component (From HomeScreen)
-    const renderStars = () => {
-        const stars = [];
-        for (let i = 0; i < 80; i++) {
-            stars.push(
-                <View
-                    key={i}
-                    style={[
-                        styles.star,
-                        {
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            width: Math.random() * 3 + 1,
-                            height: Math.random() * 3 + 1,
-                            opacity: Math.random() * 0.8 + 0.2,
-                        },
-                    ]}
-                />
-            );
-        }
-        return stars;
-    };
+
 
     const renderTopThree = () => {
         if (leaderboard.length < 3) return null;
@@ -274,20 +254,7 @@ const LeaderboardScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
-                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
-
-            {/* Starry Background */}
-            {isDark && (
-                <View style={styles.starsContainer}>
-                    {renderStars()}
-                </View>
-            )}
+        <ScreenBackground style={styles.container}>
 
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
@@ -356,7 +323,7 @@ const LeaderboardScreen = () => {
                     />
                 )}
             </View>
-        </View>
+        </ScreenBackground>
     );
 };
 

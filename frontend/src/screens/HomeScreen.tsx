@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ImageBackground, Dimensions, Platform, Image, Animated as RNAnimated, Pressable, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Dimensions, Platform, Image, Animated as RNAnimated, Pressable, useWindowDimensions } from 'react-native';
 import { Text, Surface, ProgressBar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +16,9 @@ import OnboardingTutorial from '../components/OnboardingTutorial';
 import ConfettiAnimation from '../components/ConfettiAnimation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AVATAR_OPTIONS } from '../data/avatars'; // Shared Avatar Data
+
 import { spacing } from '../theme';
+import ScreenBackground from '../components/ScreenBackground';
 
 // const { width } = Dimensions.get('window');
 
@@ -95,29 +97,7 @@ const HomeScreen = ({ navigation }: any) => {
     const totalXP = xp;
     const featuredSimulations = getAllSimulations().slice(0, 4);
 
-    // Starry background component
-    const renderStars = () => {
-        const stars = [];
-        const starStyles = styles;
-        for (let i = 0; i < 80; i++) {
-            stars.push(
-                <View
-                    key={i}
-                    style={[
-                        starStyles.star,
-                        {
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            width: Math.random() * 3 + 1,
-                            height: Math.random() * 3 + 1,
-                            opacity: Math.random() * 0.8 + 0.2,
-                        },
-                    ]}
-                />
-            );
-        }
-        return stars;
-    };
+
 
     // 🖼️ SIMULATION IMAGE MAPPING
     const getSimImage = (title: string, subject: string) => {
@@ -198,21 +178,7 @@ const HomeScreen = ({ navigation }: any) => {
     ];
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
-                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
-
-            {/* Starry Background */}
-            {isDark && (
-                <View style={styles.starsContainer}>
-                    {renderStars()}
-                </View>
-            )}
-
+        <ScreenBackground style={styles.container}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -532,7 +498,7 @@ const HomeScreen = ({ navigation }: any) => {
                     }}
                 />
             )}
-        </View >
+        </ScreenBackground >
     );
 };
 

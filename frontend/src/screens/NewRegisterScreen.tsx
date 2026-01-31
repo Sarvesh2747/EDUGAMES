@@ -7,6 +7,7 @@ import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated'
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CoreTechLogo from '../components/CoreTechLogo';
+import ScreenBackground from '../components/ScreenBackground';
 
 const ROLES = [
     { value: 'student', label: 'Student', icon: 'account-school', color: '#a78bfa' },
@@ -46,20 +47,8 @@ const NewRegisterScreen = ({ navigation }: any) => {
     };
 
     return (
-        <View style={styles.container}>
+        <ScreenBackground style={styles.container} forceDark={true}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-
-            {/* Dark Gradient Background */}
-            <LinearGradient
-                colors={['#1a1a2e', '#26264f', '#3d3d7a']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.background}
-            />
-
-            {/* Circular Glow Effects */}
-            <View style={styles.glowTop} />
-            <View style={styles.glowBottom} />
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -231,14 +220,13 @@ const NewRegisterScreen = ({ navigation }: any) => {
 
                 </ScrollView>
             </KeyboardAvoidingView>
-        </View>
+        </ScreenBackground>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
     },
     background: {
         position: 'absolute',

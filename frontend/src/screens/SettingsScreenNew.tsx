@@ -11,6 +11,7 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import CustomButton from '../components/ui/CustomButton';
 import { useResponsive } from '../hooks/useResponsive';
 import UnifiedHeader from '../components/UnifiedHeader';
+import ScreenBackground from '../components/ScreenBackground';
 
 const SettingsScreen = ({ navigation }: any) => {
     const theme = useTheme();
@@ -107,7 +108,7 @@ const SettingsScreen = ({ navigation }: any) => {
     );
 
     return (
-        <View style={styles.container}>
+        <ScreenBackground style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <ScrollView
@@ -411,14 +412,14 @@ const SettingsScreen = ({ navigation }: any) => {
                     </Text>
                 </View>
             </InfoModal>
-        </View>
+        </ScreenBackground>
     );
 };
 
 const createStyles = (isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: isDark ? '#0F172A' : '#F5F5F5',
+        // backgroundColor: isDark ? '#0F172A' : '#F5F5F5', // Handled by ScreenBackground
     },
     scrollView: {
         flex: 1,

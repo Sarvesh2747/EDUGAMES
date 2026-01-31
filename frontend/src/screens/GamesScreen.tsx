@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUserGameStats } from '../services/gamesService';
 import { formatTime } from '../hooks/useGameTimer';
+import ScreenBackground from '../components/ScreenBackground';
 
 const { width } = Dimensions.get('window');
 
@@ -310,13 +311,7 @@ const GamesScreen = ({ navigation }: any) => {
     };
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
-                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
+        <ScreenBackground style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <ScrollView
@@ -350,14 +345,14 @@ const GamesScreen = ({ navigation }: any) => {
                 </View>
 
             </ScrollView>
-        </View>
+        </ScreenBackground>
     );
 };
 
 const createStyles = (isDark: boolean, isMobile: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+        // backgroundColor: isDark ? '#0F172A' : '#F8FAFC', // Handled by ScreenBackground
     },
     scrollView: {
         flex: 1,

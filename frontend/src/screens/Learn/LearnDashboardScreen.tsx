@@ -14,6 +14,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import UnifiedHeader from '../../components/UnifiedHeader';
+import ScreenBackground from '../../components/ScreenBackground';
 
 const { width } = Dimensions.get('window');
 
@@ -171,7 +172,7 @@ const LearnDashboardScreen = ({ navigation }: any) => {
     // If no class selected, show prompt
     if (!selectedClass) {
         return (
-            <View style={styles.container}>
+            <ScreenBackground style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor="#6A5AE0" />
                 <LinearGradient
                     colors={['#6366F1', '#4F46E5']}
@@ -208,12 +209,12 @@ const LearnDashboardScreen = ({ navigation }: any) => {
                         <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Go to Profile</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </ScreenBackground>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <ScreenBackground style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#6A5AE0" />
 
             {/* Content Area */}
@@ -348,14 +349,14 @@ const LearnDashboardScreen = ({ navigation }: any) => {
                     </View>
                 </ScrollView>
             </View>
-        </View>
+        </ScreenBackground>
     );
 };
 
 const createStyles = (isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+        // backgroundColor: isDark ? '#0F172A' : '#F8FAFC', // Handled by ScreenBackground
     },
     headerBackground: {
         paddingBottom: spacing.xxl + 12,
