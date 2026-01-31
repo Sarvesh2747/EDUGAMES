@@ -65,7 +65,7 @@
     "@types/istanbul-reports": "^3.0.4",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.0",
-    "baseline-browser-mapping": "latest",
+    "baseline-browser-mapping": "^2.9.19",
     "react-refresh": "^0.18.0",
     "typescript": "~5.9.2"
   },
