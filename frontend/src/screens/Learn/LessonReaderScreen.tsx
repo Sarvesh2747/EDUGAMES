@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
 import { Text, useTheme, IconButton, Surface } from 'react-native-paper';
 import Markdown, { RenderRules } from 'react-native-markdown-display';
 import GradientBackground from '../../components/ui/GradientBackground';
@@ -100,7 +100,7 @@ const LessonReaderScreen = ({ route, navigation }: any) => {
 
             {/* Content Card with Modern Design */}
             <Animated.View
-                entering={FadeInDown.duration(400)}
+                entering={Platform.OS === 'web' ? undefined : FadeInDown.duration(400)}
                 style={styles.contentCard}
             >
                 <Surface style={styles.contentSurface} elevation={4}>

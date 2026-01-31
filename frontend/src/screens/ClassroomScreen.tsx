@@ -309,6 +309,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 22,
         fontWeight: 'bold',
+        marginTop: spacing.sm,
         marginBottom: spacing.md,
     },
     joinButton: {

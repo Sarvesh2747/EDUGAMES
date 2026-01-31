@@ -31,10 +31,6 @@ const SettingsScreen = ({ navigation }: any) => {
         if (Platform.OS === 'web') {
             if (window.confirm('Are you sure you want to logout?')) {
                 await logout();
-                navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Onboarding' }],
-                });
             }
         } else {
             Alert.alert(
@@ -47,10 +43,6 @@ const SettingsScreen = ({ navigation }: any) => {
                         style: 'destructive',
                         onPress: async () => {
                             await logout();
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Onboarding' }],
-                            });
                         }
                     },
                 ]
@@ -91,7 +83,7 @@ const SettingsScreen = ({ navigation }: any) => {
             onRequestClose={onClose}
         >
             <View style={styles.modalOverlay}>
-                <Animated.View entering={FadeIn.duration(300)} style={styles.modalContent}>
+                <Animated.View entering={Platform.OS === 'web' ? undefined : FadeIn.duration(300)} style={styles.modalContent}>
                     <Surface style={styles.modalSurface} elevation={5}>
                         <View style={styles.modalHeader}>
                             <LinearGradient
@@ -133,7 +125,7 @@ const SettingsScreen = ({ navigation }: any) => {
                 <View style={{ marginTop: -40 }}>
 
                     {/* Account Section */}
-                    <Animated.View entering={FadeInDown.delay(100).duration(600)}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(100).duration(600)}>
                         <Text variant="titleSmall" style={styles.sectionTitle}>ACCOUNT</Text>
                         <Surface style={styles.section} elevation={2}>
                             <SettingItem
@@ -154,7 +146,7 @@ const SettingsScreen = ({ navigation }: any) => {
                     </Animated.View>
 
                     {/* Preferences Section */}
-                    <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(200).duration(600)}>
                         <Text variant="titleSmall" style={styles.sectionTitle}>PREFERENCES</Text>
                         <Surface style={styles.section} elevation={2}>
                             <SettingItem
@@ -211,7 +203,7 @@ const SettingsScreen = ({ navigation }: any) => {
                     </Animated.View>
 
                     {/* Data & Storage Section */}
-                    <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(300).duration(600)}>
                         <Text variant="titleSmall" style={styles.sectionTitle}>DATA & STORAGE</Text>
                         <Surface style={styles.section} elevation={2}>
                             <SettingItem
@@ -246,7 +238,7 @@ const SettingsScreen = ({ navigation }: any) => {
                     </Animated.View>
 
                     {/* About Section */}
-                    <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(400).duration(600)}>
                         <Text variant="titleSmall" style={styles.sectionTitle}>ABOUT</Text>
                         <Surface style={styles.section} elevation={2}>
                             <SettingItem
@@ -273,7 +265,7 @@ const SettingsScreen = ({ navigation }: any) => {
                     </Animated.View>
 
                     {/* Logout Button */}
-                    <Animated.View entering={FadeInDown.delay(500).duration(600)} style={styles.logoutContainer}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(500).duration(600)} style={styles.logoutContainer}>
                         <CustomButton
                             variant="outlined"
                             icon="logout"
@@ -367,10 +359,18 @@ const SettingsScreen = ({ navigation }: any) => {
                     <Text variant="titleMedium" style={styles.sectionHeading}>Contact Us</Text>
                     <TouchableOpacity
                         style={styles.contactItem}
-                        onPress={() => Linking.openURL('mailto:support@rurallearning.app')}
+                        onPress={() => Linking.openURL('mailto:divyesh.ravane_comp23@pccoer.in')}
                     >
                         <MaterialCommunityIcons name="email" size={24} color="#667EEA" />
-                        <Text variant="bodyMedium" style={styles.contactText}>support@rurallearning.app</Text>
+                        <Text variant="bodyMedium" style={styles.contactText}>divyesh.ravane_comp23@pccoer.in</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.contactItem, { marginTop: 8 }]}
+                        onPress={() => Linking.openURL('tel:8999867349')}
+                    >
+                        <MaterialCommunityIcons name="phone" size={24} color="#667EEA" />
+                        <Text variant="bodyMedium" style={styles.contactText}>+91 89998 67349</Text>
                     </TouchableOpacity>
                 </View>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList, Modal, StatusBar } from 'react-native';
 import { Text, Surface, Button, ActivityIndicator, useTheme, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -9,11 +9,13 @@ import FeedbackFormModal from '../components/FeedbackFormModal';
 import api from '../services/api';
 import SuccessModal from '../components/ui/SuccessModal';
 import { formatDistanceToNow } from 'date-fns';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const StudentFeedbackScreen = () => {
     const navigation = useNavigation();
     const { isDark } = useAppTheme();
     const theme = useTheme();
+    const insets = useSafeAreaInsets();
 
     // State
     const [myFeedback, setMyFeedback] = useState<any[]>([]);
@@ -116,11 +118,7 @@ const StudentFeedbackScreen = () => {
             { _id: 'teacher_generic', name: 'Teacher Feedback', email: 'Share with your teachers', targetType: 'teacher_generic', avatar: null }
         ];
 
-        // We can still append specific teachers if needed, or just let 'Teacher Feedback' handle it
-        // For now, let's keep specific teachers as additional options if they exist
         if (teachers.length > 0) {
-            // Filter out 'all' because we have the generic button now, or keep it?
-            // Let's just append actual teachers
             const specificTeachers = teachers.filter(t => t._id !== 'all');
             return [...list, ...specificTeachers];
         }
@@ -156,8 +154,31 @@ const StudentFeedbackScreen = () => {
         }
     };
 
+    // Starry background component
+    const renderStars = () => {
+        const stars = [];
+        for (let i = 0; i < 80; i++) {
+            stars.push(
+                <View
+                    key={i}
+                    style={[
+                        styles.star,
+                        {
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            width: Math.random() * 3 + 1,
+                            height: Math.random() * 3 + 1,
+                            opacity: Math.random() * 0.8 + 0.2,
+                        },
+                    ]}
+                />
+            );
+        }
+        return stars;
+    };
+
     const renderFeedbackItem = ({ item }: any) => (
-        <Surface style={[styles.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]} elevation={2}>
+        <Surface style={[styles.card, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.9)' }]} elevation={2}>
             <View style={styles.cardHeader}>
                 <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
                     <MaterialCommunityIcons
@@ -240,10 +261,29 @@ const StudentFeedbackScreen = () => {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+        <View style={styles.container}>
+            {/* Unified App Background */}
             <LinearGradient
-                colors={['#8B5CF6', '#6366F1']}
-                style={styles.header}
+                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
+                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+
+            {/* Starry Background */}
+            {isDark && (
+                <View style={styles.starsContainer}>
+                    {renderStars()}
+                </View>
+            )}
+
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6', '#A855F7']}
+                style={[styles.header, { paddingTop: insets.top + 10 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             >
                 <View style={styles.headerContent}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -263,6 +303,7 @@ const StudentFeedbackScreen = () => {
                     style={styles.giveFeedbackButton}
                     icon="plus"
                     contentStyle={{ paddingVertical: 8 }}
+                    buttonColor={isDark ? '#6366F1' : '#4F46E5'}
                 >
                     Give New Feedback
                 </Button>
@@ -278,7 +319,7 @@ const StudentFeedbackScreen = () => {
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
-                                <MaterialCommunityIcons name="comment-text-outline" size={64} color="#CBD5E1" />
+                                <MaterialCommunityIcons name="comment-text-outline" size={64} color={isDark ? '#475569' : '#CBD5E1'} />
                                 <Text style={styles.emptyText}>No feedback yet</Text>
                                 <Text style={styles.emptySubtext}>Share your thoughts with us!</Text>
                             </View>
@@ -342,48 +383,81 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    starsContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 0,
+    },
+    star: {
+        position: 'absolute',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 50,
+    },
     header: {
-        paddingTop: 60,
-        paddingBottom: 30,
-        paddingHorizontal: 20,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
+        paddingBottom: 40,
+        paddingHorizontal: 24,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        zIndex: 10,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     backButton: {
         marginRight: 15,
-        padding: 5,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
     headerTitle: {
         color: '#FFF',
-        fontWeight: 'bold',
+        fontWeight: '800',
+        fontSize: 24,
     },
     headerSubtitle: {
         color: 'rgba(255,255,255,0.9)',
-        fontSize: 16,
-        marginLeft: 4,
+        fontSize: 14,
+        marginLeft: 55, // Align with title
+        opacity: 0.8,
     },
     content: {
         flex: 1,
         paddingHorizontal: 20,
-        marginTop: -20,
+        marginTop: 20, // Push below header
     },
     giveFeedbackButton: {
         marginBottom: 20,
-        borderRadius: 12,
+        borderRadius: 16,
         elevation: 4,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     listContent: {
-        paddingBottom: 20,
+        paddingBottom: 40,
     },
     card: {
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     cardHeader: {
         flexDirection: 'row',

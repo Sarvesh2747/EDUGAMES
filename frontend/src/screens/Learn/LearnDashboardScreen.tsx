@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList, Dimensions, StatusBar } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList, Dimensions, StatusBar, Platform } from 'react-native';
 import { Text, useTheme, Avatar, ProgressBar, Surface, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInRight, FadeIn } from 'react-native-reanimated';
@@ -120,7 +120,7 @@ const LearnDashboardScreen = ({ navigation }: any) => {
 
         return (
             <Animated.View
-                entering={FadeInDown.delay(index * 80).duration(600).springify()}
+                entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(index * 80).duration(600).springify()}
                 style={styles.subjectCardWrapper}
             >
                 <TouchableOpacity
@@ -230,7 +230,7 @@ const LearnDashboardScreen = ({ navigation }: any) => {
                     />
 
                     {/* Content Area with Overlap */}
-                    <View style={[styles.contentContainer, { marginTop: -40 }]}>
+                    <View style={[styles.contentContainer, { marginTop: spacing.max }]}>
 
 
 
@@ -255,7 +255,7 @@ const LearnDashboardScreen = ({ navigation }: any) => {
                                 return (
                                     <Animated.View
                                         key={item._id}
-                                        entering={FadeInDown.delay(index * 80).duration(600).springify()}
+                                        entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(index * 80).duration(600).springify()}
                                         style={[styles.subjectCardWrapper, { width: isMobile ? '48%' : '48%' }]}
                                     >
                                         <TouchableOpacity

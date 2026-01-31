@@ -6,6 +6,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import api from './api';
+import { getData } from '../offline/offlineStorage';
+import { STORAGE_KEYS } from '../utils/constants';
 
 const SCREEN_TIME_KEY = 'screen_time_data';
 const SESSION_KEY = 'current_session';
@@ -220,7 +222,14 @@ class ScreenTimeService {
         try {
             const netInfo = await NetInfo.fetch();
             if (!netInfo.isConnected) {
-                console.log('[ScreenTime] Offline, skipping sync');
+                // console.log('[ScreenTime] Offline, skipping sync');
+                return;
+            }
+
+            // Check for valid token before attempting sync
+            const token = await getData(STORAGE_KEYS.USER_TOKEN);
+            if (!token) {
+                // console.log('[ScreenTime] No token found, skipping sync');
                 return;
             }
 
@@ -233,8 +242,13 @@ class ScreenTimeService {
             });
 
             console.log('[ScreenTime] Synced with backend');
-        } catch (error) {
-            console.error('[ScreenTime] Sync failed:', error);
+        } catch (error: any) {
+            // Suppress 401 errors to avoid console noise (handled by AuthContext/interceptors)
+            if (error.response?.status === 401 || error.status === 401) {
+                // console.warn('[ScreenTime] Exiting sync due to auth error');
+                return;
+            }
+            console.error('[ScreenTime] Sync failed:', error.message || error);
         }
     }
 

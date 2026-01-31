@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../services/api';
 import { searchOffline } from '../utils/offlineSearch';
 import { useAuth } from '../context/AuthContext';
+import { useAppTheme } from '../context/ThemeContext';
 
 interface Message {
     id: string;
@@ -17,6 +19,9 @@ interface Message {
 
 const ChatbotScreen = () => {
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
+    const { isDark } = useAppTheme();
+
     const [query, setQuery] = useState('');
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -129,14 +134,50 @@ const ChatbotScreen = () => {
         flatListRef.current?.scrollToEnd({ animated: true });
     }, [messages]);
 
+    // Starry background component
+    const renderStars = () => {
+        const stars = [];
+        for (let i = 0; i < 80; i++) {
+            stars.push(
+                <View
+                    key={i}
+                    style={[
+                        styles.star,
+                        {
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            width: Math.random() * 3 + 1,
+                            height: Math.random() * 3 + 1,
+                            opacity: Math.random() * 0.8 + 0.2,
+                        },
+                    ]}
+                />
+            );
+        }
+        return stars;
+    };
+
     const renderMessage = ({ item }: { item: Message }) => {
         const isUser = item.sender === 'user';
         return (
             <View style={[
                 styles.messageContainer,
-                isUser ? styles.userMessage : styles.botMessage
+                isUser ? styles.userMessage : [styles.botMessage, isDark && styles.botMessageDark]
             ]}>
-                <Text style={[styles.messageText, isUser ? styles.userText : styles.botText]}>
+                {!isUser && (
+                    <View style={styles.botIconContainer}>
+                        <LinearGradient
+                            colors={['#6366F1', '#A855F7']}
+                            style={styles.botIconGradient}
+                        >
+                            <MaterialCommunityIcons name="robot" size={16} color="#FFF" />
+                        </LinearGradient>
+                    </View>
+                )}
+                <Text style={[
+                    styles.messageText,
+                    isUser ? styles.userText : [styles.botText, isDark && { color: '#E2E8F0' }]
+                ]}>
                     {item.text}
                 </Text>
             </View>
@@ -144,30 +185,62 @@ const ChatbotScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>AI Tutor {isOffline ? '(Offline)' : ''}</Text>
-                <View style={{ width: 24 }} />
-            </View>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+            {/* Unified App Background */}
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
+                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+
+            {/* Starry Background for Dark Mode */}
+            {isDark && (
+                <View style={styles.starsContainer}>
+                    {renderStars()}
+                </View>
+            )}
+
+            {/* Premium Header */}
+            <LinearGradient
+                colors={['#6366F1', '#8B5CF6', '#A855F7']}
+                style={[styles.header, { paddingTop: insets.top + 10 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
+                <View style={styles.headerContent}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>AI Tutor {isOffline ? '(Offline)' : ''}</Text>
+                    <TouchableOpacity style={styles.helpButton}>
+                        <Ionicons name="help-circle-outline" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </LinearGradient>
 
             <FlatList
                 ref={flatListRef}
                 data={messages}
                 keyExtractor={item => item.id}
                 renderItem={renderMessage}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]} // Extra padding for input
                 style={styles.list}
+                showsVerticalScrollIndicator={false}
             />
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={100}>
-                <View style={styles.inputContainer}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                style={styles.keyboardView}
+            >
+                <View style={[styles.inputContainer, isDark && styles.inputContainerDark, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, isDark && styles.inputDark]}
                         placeholder="Ask a doubt..."
-                        placeholderTextColor="#666"
+                        placeholderTextColor={isDark ? "#94A3B8" : "#666"}
                         value={query}
                         onChangeText={setQuery}
                         onSubmitEditing={handleSend}
@@ -176,65 +249,121 @@ const ChatbotScreen = () => {
                         {loading ? (
                             <ActivityIndicator color="#FFF" size="small" />
                         ) : (
-                            <Ionicons name="send" size={20} color="#FFF" />
+                            <LinearGradient
+                                colors={['#6366F1', '#A855F7']}
+                                style={styles.sendGradient}
+                            >
+                                <Ionicons name="send" size={20} color="#FFF" />
+                            </LinearGradient>
                         )}
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
+    },
+    starsContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 0,
+    },
+    star: {
+        position: 'absolute',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 50,
     },
     header: {
+        paddingBottom: 25,
+        paddingHorizontal: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        zIndex: 10,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-        backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
     },
     backButton: {
-        padding: 4,
+        padding: 8,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 20,
+    },
+    helpButton: {
+        padding: 8,
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#333'
+        color: '#FFF',
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     list: {
         flex: 1,
     },
     listContent: {
-        padding: 16,
-        paddingBottom: 20
+        padding: 20,
+        paddingTop: 30, // Space from header
     },
     messageContainer: {
-        maxWidth: '80%',
-        padding: 12,
-        borderRadius: 16,
-        marginBottom: 12,
+        maxWidth: '85%',
+        padding: 16,
+        borderRadius: 20,
+        marginBottom: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     userMessage: {
         alignSelf: 'flex-end',
-        backgroundColor: '#4A90E2',
+        backgroundColor: '#6366F1', // Primary Purple
         borderBottomRightRadius: 4,
     },
     botMessage: {
         alignSelf: 'flex-start',
         backgroundColor: '#FFF',
         borderBottomLeftRadius: 4,
+        marginLeft: 8,
+    },
+    botMessageDark: {
+        backgroundColor: '#1E293B',
         borderWidth: 1,
-        borderColor: '#E0E0E0'
+        borderColor: '#334155',
+    },
+    botIconContainer: {
+        position: 'absolute',
+        top: -10,
+        left: -10,
+        zIndex: 1,
+    },
+    botIconGradient: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 2,
     },
     messageText: {
         fontSize: 16,
-        lineHeight: 22,
+        lineHeight: 24,
     },
     userText: {
         color: '#FFF'
@@ -242,31 +371,63 @@ const styles = StyleSheet.create({
     botText: {
         color: '#333'
     },
+    keyboardView: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+    },
     inputContainer: {
         flexDirection: 'row',
-        padding: 12,
+        padding: 16,
+        paddingTop: 12,
         backgroundColor: '#FFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        alignItems: 'center',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+    },
+    inputContainerDark: {
+        backgroundColor: '#1E293B',
         borderTopWidth: 1,
-        borderTopColor: '#E0E0E0',
-        alignItems: 'center'
+        borderTopColor: '#334155',
     },
     input: {
         flex: 1,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: '#F1F5F9',
         borderRadius: 24,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
         fontSize: 16,
         marginRight: 12,
-        color: '#333'
+        color: '#333',
+    },
+    inputDark: {
+        backgroundColor: '#0F172A',
+        color: '#FFF',
     },
     sendButton: {
-        backgroundColor: '#4A90E2',
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+    },
+    sendGradient: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
     }
 });
 

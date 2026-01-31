@@ -16,6 +16,8 @@ import MobileModelListScreen from '../screens/MobileModelListScreen';
 import ThreeDModelScreen from '../screens/ThreeDModelScreen';
 import Mobile3DViewer from '../screens/Mobile3DViewer';
 import { useResponsive } from '../hooks/useResponsive';
+import GravityMapScreen from '../screens/Learn/GravityMapScreen';
+import ElectricityMapScreen from '../screens/Learn/ElectricityMapScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,6 +50,8 @@ const LearnNavigator = () => {
                 name="ThreeDModel"
                 component={Platform.OS === 'web' ? ThreeDModelScreen : Mobile3DViewer}
             />
+            <Stack.Screen name="GravityMap" component={GravityMapScreen} />
+            <Stack.Screen name="ElectricityMap" component={ElectricityMapScreen} />
         </Stack.Navigator>
     );
 };

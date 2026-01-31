@@ -1,25 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, useTheme, ActivityIndicator, ProgressBar, Surface, IconButton } from 'react-native-paper';
+import { View, StyleSheet, FlatList, TouchableOpacity, Platform, StatusBar, Pressable } from 'react-native';
+import { Text, useTheme, ActivityIndicator, ProgressBar, Surface } from 'react-native-paper';
 import { learnService } from '../../services/learnService';
 import { progressService } from '../../services/progressService';
-import GradientBackground from '../../components/ui/GradientBackground';
-import { spacing, gradients, borderRadius } from '../../theme';
-import Animated, { FadeInDown, FadeIn, Layout } from 'react-native-reanimated';
+import { spacing } from '../../theme';
+import Animated, { FadeInDown, FadeIn, Layout, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const ScaleButton = ({ onPress, style, children, ...props }: any) => {
+    const scale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }]
+    }));
+
+    const onPressIn = () => {
+        scale.value = withSpring(0.98);
+    };
+
+    const onPressOut = () => {
+        scale.value = withSpring(1);
+    };
+
+    return (
+        <AnimatedPressable
+            onPress={onPress}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            style={[style, animatedStyle]}
+            {...props}
+        >
+            {children}
+        </AnimatedPressable>
+    );
+};
 
 const ChapterListScreen = ({ route, navigation }: any) => {
     const { subjectId, subjectName } = route.params;
     const theme = useTheme();
     const { isDark } = useAppTheme();
+    const insets = useSafeAreaInsets();
     const [chapters, setChapters] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const isFocused = useIsFocused();
-
     const styles = createStyles(isDark);
 
     useEffect(() => {
@@ -48,6 +78,29 @@ const ChapterListScreen = ({ route, navigation }: any) => {
         }
     };
 
+    // Starry background component
+    const renderStars = () => {
+        const stars = [];
+        for (let i = 0; i < 60; i++) {
+            stars.push(
+                <View
+                    key={i}
+                    style={[
+                        styles.star,
+                        {
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            width: Math.random() * 2 + 1,
+                            height: Math.random() * 2 + 1,
+                            opacity: Math.random() * 0.7 + 0.3,
+                        },
+                    ]}
+                />
+            );
+        }
+        return stars;
+    };
+
     const ChapterCard = ({ item, index }: { item: any; index: number }) => {
         const [progress, setProgress] = useState<number>(0);
         const topicCount = item.subchapters?.length || 0;
@@ -56,178 +109,184 @@ const ChapterListScreen = ({ route, navigation }: any) => {
         useEffect(() => {
             const loadProgress = async () => {
                 const chapterProgress = await progressService.getChapterProgress(item._id);
-                // Set progress to 1 (100%) if completed, otherwise 0
                 setProgress(chapterProgress?.completed ? 1 : 0);
             };
             loadProgress();
         }, [item._id]);
 
         return (
-            <Animated.View entering={FadeInDown.delay(index * 80).duration(500)} layout={Layout.springify()}>
-                <TouchableOpacity
+            <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(index * 80).duration(500)} layout={Layout.springify()}>
+                <ScaleButton
                     onPress={() => {
                         if (item.subchapters && item.subchapters.length > 0) {
                             navigation.navigate('Subchapter', { subchapterId: item.subchapters[0]._id });
                         }
                     }}
-                    activeOpacity={0.9}
+                    style={{ marginBottom: spacing.md }}
                 >
-                    <Surface style={styles.chapterCard} elevation={3}>
-                        {/* Chapter Number Badge */}
-                        <View style={styles.chapterBadge}>
+                    <Surface style={styles.chapterCard} elevation={2}>
+                        {/* Left Side: Number Circle */}
+                        <View style={styles.numberContainer}>
                             <LinearGradient
-                                colors={progress > 0 ? ['#4CAF50', '#66BB6A'] : ['#6A5AE0', '#8B7AFF']}
-                                style={styles.badgeGradient}
+                                colors={progress === 1
+                                    ? ['#10B981', '#059669'] // Green if done
+                                    : ['#6366F1', '#8B5CF6']} // Violet/Purple default
+                                style={styles.numberGradient}
                             >
                                 <Text style={styles.chapterNumber}>{index + 1}</Text>
                             </LinearGradient>
                         </View>
 
-                        {/* Chapter Content */}
+                        {/* Middle: Content */}
                         <View style={styles.chapterContent}>
-                            <View style={styles.chapterHeader}>
-                                <View style={styles.chapterTitleRow}>
-                                    <Text variant="titleMedium" style={styles.chapterTitle} numberOfLines={2}>
-                                        {item.name}
-                                    </Text>
-                                    {progress === 1 && (
-                                        <View style={styles.completedBadge}>
-                                            <MaterialCommunityIcons name="check-circle" size={20} color="#4CAF50" />
-                                        </View>
-                                    )}
-                                </View>
+                            <Text variant="titleMedium" style={styles.chapterTitle} numberOfLines={2}>
+                                {item.name}
+                            </Text>
 
-                                {/* Topic Count */}
-                                <View style={styles.topicCountContainer}>
-                                    <MaterialCommunityIcons name="book-outline" size={16} color="#888" />
-                                    <Text style={styles.topicCount}>
-                                        {topicCount} Topic{topicCount !== 1 ? 's' : ''}
-                                    </Text>
-                                </View>
+                            <View style={styles.metaRow}>
+                                <MaterialCommunityIcons name="book-open-page-variant" size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                                <Text style={styles.metaText}>{topicCount} Topics</Text>
                             </View>
 
-                            {/* Progress Section */}
                             <View style={styles.progressSection}>
                                 <View style={styles.progressInfo}>
                                     <Text style={styles.progressLabel}>Progress</Text>
-                                    <Text style={styles.progressPercent}>{Math.round(progress * 100)}%</Text>
+                                    <Text style={[styles.progressPercent, progress === 1 && { color: '#10B981' }]}>
+                                        {Math.round(progress * 100)}%
+                                    </Text>
                                 </View>
                                 <ProgressBar
                                     progress={progress}
-                                    color={progress === 1 ? '#4CAF50' : '#6A5AE0'}
+                                    color={progress === 1 ? '#10B981' : '#6366F1'}
                                     style={styles.progressBar}
                                 />
                             </View>
 
-                            {/* Action Buttons */}
+                            {/* Actions Row */}
                             <View style={styles.actionRow}>
+                                {/* Read Button */}
                                 <TouchableOpacity
-                                    style={styles.secondaryButton}
+                                    style={styles.readButton}
                                     onPress={async (e) => {
                                         e.stopPropagation();
+
+                                        // Special case for Gravity Topic Map
+                                        if (item.name === 'Gravitation') {
+                                            navigation.navigate('GravityMap');
+                                            return;
+                                        }
+                                        // Special case for Current Electricity Topic Map
+                                        if (item.name === 'Current Electricity') {
+                                            navigation.navigate('ElectricityMap');
+                                            return;
+                                        }
+
                                         try {
                                             const chapterContent = await learnService.getChapterContent(item._id);
-                                            console.log('[ChapterList] Opening lesson:', {
-                                                chapterId: item._id,
-                                                subjectId,
-                                                title: item.name
-                                            });
                                             navigation.navigate('LessonReader', {
                                                 title: item.name,
                                                 content: chapterContent.combinedContent,
                                                 xpReward: 20,
                                                 chapterId: item._id,
                                                 subjectId: subjectId,
-                                                classId: route.params.classId || 'class-6', // Get from route or default
+                                                classId: route.params.classId || 'class-6',
                                             });
                                         } catch (error) {
                                             console.error('Error loading chapter content:', error);
                                         }
                                     }}
-                                    activeOpacity={0.8}
                                 >
-                                    <MaterialCommunityIcons name="book-open-variant" size={18} color="#6A5AE0" />
-                                    <Text style={styles.secondaryButtonText}>Read</Text>
+                                    <MaterialCommunityIcons name="book-open-variant" size={16} color="#6366F1" />
+                                    <Text style={styles.readButtonText}>Read</Text>
                                 </TouchableOpacity>
 
+                                {/* Start/Continue Button */}
                                 <TouchableOpacity
-                                    style={styles.primaryButton}
+                                    style={styles.actionButton}
                                     onPress={() => {
                                         if (item.subchapters && item.subchapters.length > 0) {
                                             navigation.navigate('Subchapter', { subchapterId: item.subchapters[0]._id });
                                         }
                                     }}
-                                    activeOpacity={0.8}
                                 >
                                     <LinearGradient
-                                        colors={['#6A5AE0', '#8B7AFF']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.primaryButtonGradient}
+                                        colors={['#6366F1', '#4F46E5']}
+                                        style={styles.actionButtonGradient}
                                     >
-                                        <Text style={styles.primaryButtonText}>
+                                        <Text style={styles.actionButtonText}>
                                             {progress > 0 ? 'Continue' : 'Start'}
                                         </Text>
-                                        <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+                                        <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
                                     </LinearGradient>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     </Surface>
-                </TouchableOpacity>
+                </ScaleButton>
             </Animated.View>
         );
     };
 
-    const renderChapterCard = ({ item, index }: any) => {
-        return <ChapterCard item={item} index={index} />;
-    };
-
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Loading chapters...</Text>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <LinearGradient
+                    colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
+                    style={StyleSheet.absoluteFill}
+                />
+                <ActivityIndicator size="large" color="#6366F1" />
+                <Text style={{ marginTop: 16, color: isDark ? '#fff' : '#333' }}>Loading chapters...</Text>
             </View>
         );
     }
 
     return (
         <View style={styles.container}>
-            {/* Enhanced Header */}
+            {/* Background */}
             <LinearGradient
-                colors={['#6A5AE0', '#8B7AFF']}
+                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
+                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.headerBackground}
+            />
+
+            {/* Starry Background for Dark Mode */}
+            {isDark && (
+                <View style={styles.starsContainer}>
+                    {renderStars()}
+                </View>
+            )}
+
+            {/* Header */}
+            <LinearGradient
+                colors={isDark ? ['#6366F1', '#4F46E5'] : ['#6366F1', '#8B5CF6']}
+                style={[styles.headerBackground, { paddingTop: insets.top + spacing.md }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             >
-                <View style={styles.headerContent}>
-                    <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <View style={styles.headerTitleContainer}>
-                            <Text variant="headlineSmall" style={styles.headerTitle}>
-                                {subjectName}
-                            </Text>
-                            <Text style={styles.headerSubtitle}>
-                                {chapters.length} Chapter{chapters.length !== 1 ? 's' : ''}
-                            </Text>
-                        </View>
-                        <View style={{ width: 40 }} />
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={styles.headerTitle}>{subjectName}</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {chapters.length} Chapter{chapters.length !== 1 ? 's' : ''}
+                        </Text>
                     </View>
+                    <View style={{ width: 40 }} />
                 </View>
             </LinearGradient>
 
             {/* Content */}
             <View style={styles.contentContainer}>
                 {/* Info Card */}
-                <Animated.View entering={FadeIn.duration(400)} style={styles.infoCardContainer}>
+                <Animated.View entering={FadeIn.delay(200)} style={styles.infoCardWrapper}>
                     <Surface style={styles.infoCard} elevation={2}>
-                        <View style={styles.infoIconContainer}>
-                            <MaterialCommunityIcons name="lightbulb-on" size={24} color="#FF9A62" />
+                        <View style={styles.infoIconBox}>
+                            <MaterialCommunityIcons name="lightbulb-on" size={24} color="#F59E0B" />
                         </View>
-                        <View style={styles.infoTextContainer}>
+                        <View style={{ flex: 1 }}>
                             <Text style={styles.infoTitle}>Learn at Your Pace</Text>
                             <Text style={styles.infoText}>
                                 Complete chapters to unlock achievements and earn XP!
@@ -239,13 +298,13 @@ const ChapterListScreen = ({ route, navigation }: any) => {
                 {/* Chapters List */}
                 <FlatList
                     data={chapters}
-                    renderItem={renderChapterCard}
+                    renderItem={({ item, index }) => <ChapterCard item={item} index={index} />}
                     keyExtractor={(item) => item._id}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <MaterialCommunityIcons name="book-open-page-variant-outline" size={64} color="#ccc" />
+                            <MaterialCommunityIcons name="book-open-page-variant-outline" size={64} color="#94A3B8" />
                             <Text style={styles.emptyText}>No chapters available for this subject yet.</Text>
                         </View>
                     }
@@ -258,92 +317,77 @@ const ChapterListScreen = ({ route, navigation }: any) => {
 const createStyles = (isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: isDark ? '#0F172A' : '#F5F5F7',
+    },
+    starsContainer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 0,
+    },
+    star: {
+        position: 'absolute',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 50,
     },
     headerBackground: {
-        paddingTop: spacing.xl + 10,
-        paddingBottom: spacing.xxl + 10,
-        borderBottomLeftRadius: 28,
-        borderBottomRightRadius: 28,
-        shadowColor: '#6A5AE0',
+        paddingBottom: 50, // More bottom padding for content overlap
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        paddingHorizontal: spacing.lg,
+        shadowColor: '#6366F1',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    headerContent: {
-        paddingHorizontal: spacing.md,
-        paddingTop: spacing.sm,
+        shadowRadius: 16,
+        zIndex: 10,
     },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    headerTitleContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    contentContainer: {
-        flex: 1,
-        marginTop: -spacing.xl,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: isDark ? '#0F172A' : '#F5F5F7',
-    },
-    loadingText: {
-        marginTop: spacing.md,
-        color: isDark ? '#94A3B8' : '#888',
-        fontSize: 14,
-    },
     backButton: {
-        padding: 10,
-        backgroundColor: 'rgba(255,255,255,0.25)',
-        borderRadius: 14,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-    },
-    headerTitle: {
-        color: '#fff',
-        fontWeight: '800',
-        textAlign: 'center',
-        fontSize: 22,
-    },
-    headerSubtitle: {
-        color: 'rgba(255,255,255,0.85)',
-        fontSize: 13,
-        marginTop: 2,
-        fontWeight: '500',
-    },
-    infoCardContainer: {
-        paddingHorizontal: spacing.lg,
-        marginTop: spacing.xl,
-        marginBottom: spacing.md,
-    },
-    infoCard: {
-        flexDirection: 'row',
-        padding: spacing.md,
-        borderRadius: 16,
-        backgroundColor: isDark ? '#1E293B' : '#FFF5F0',
-        borderLeftWidth: 4,
-        borderLeftColor: '#FF9A62',
-    },
-    infoIconContainer: {
         width: 40,
         height: 40,
         borderRadius: 12,
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing.md,
     },
-    infoTextContainer: {
+    headerTitleContainer: {
+        alignItems: 'center',
+    },
+    headerTitle: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: '800',
+    },
+    headerSubtitle: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    contentContainer: {
         flex: 1,
+        marginTop: -30, // Overlap header
+    },
+    infoCardWrapper: {
+        paddingHorizontal: spacing.lg,
+        marginBottom: spacing.lg,
+    },
+    infoCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 20,
+        backgroundColor: isDark ? '#1E293B' : '#fff',
+        gap: 16,
+    },
+    infoIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#FFF7ED', // Light Orange
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     infoTitle: {
         fontSize: 14,
@@ -353,84 +397,62 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     },
     infoText: {
         fontSize: 12,
-        color: isDark ? '#CBD5E1' : '#666',
+        color: isDark ? '#94A3B8' : '#64748B',
         lineHeight: 18,
     },
     listContent: {
         paddingHorizontal: spacing.lg,
-        paddingTop: spacing.sm,
-        paddingBottom: 40,
-        gap: spacing.md,
+        paddingBottom: 100,
+        gap: spacing.sm, // Gap handled by marginBottom in item
     },
     chapterCard: {
-        borderRadius: 20,
-        backgroundColor: isDark ? '#1E293B' : '#fff',
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 3,
         flexDirection: 'row',
+        padding: 16,
+        borderRadius: 24,
+        backgroundColor: isDark ? '#1E293B' : '#fff',
     },
-    chapterBadge: {
-        width: 70,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: isDark ? '#0F172A' : '#F8F8F8',
+    numberContainer: {
+        marginRight: 16,
     },
-    badgeGradient: {
+    numberGradient: {
         width: 50,
         height: 50,
         borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#6A5AE0',
-        shadowOffset: { width: 0, height: 2 },
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowRadius: 8,
     },
     chapterNumber: {
-        fontSize: 22,
-        fontWeight: '800',
         color: '#fff',
+        fontSize: 20,
+        fontWeight: '800',
     },
     chapterContent: {
         flex: 1,
-        padding: spacing.md + 2,
-    },
-    chapterHeader: {
-        marginBottom: spacing.sm,
-    },
-    chapterTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: 6,
     },
     chapterTitle: {
-        flex: 1,
-        fontWeight: '700',
-        fontSize: 17,
+        fontSize: 16,
+        fontWeight: '800',
         color: isDark ? '#F1F5F9' : '#1A1A1A',
-        lineHeight: 24,
+        marginBottom: 8,
+        lineHeight: 22,
     },
-    completedBadge: {
-        marginLeft: 8,
-    },
-    topicCountContainer: {
+    metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        marginBottom: 12,
     },
-    topicCount: {
-        fontSize: 13,
-        color: isDark ? '#94A3B8' : '#888',
+    metaText: {
+        fontSize: 12,
+        color: isDark ? '#94A3B8' : '#64748B',
         fontWeight: '600',
     },
     progressSection: {
-        marginBottom: spacing.md,
+        marginBottom: 16,
     },
     progressInfo: {
         flexDirection: 'row',
@@ -438,72 +460,65 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         marginBottom: 6,
     },
     progressLabel: {
-        fontSize: 12,
+        fontSize: 11,
         color: isDark ? '#94A3B8' : '#888',
         fontWeight: '600',
     },
     progressPercent: {
-        fontSize: 12,
-        color: '#6A5AE0',
+        fontSize: 11,
+        color: '#6366F1',
         fontWeight: '700',
     },
     progressBar: {
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: isDark ? '#334155' : '#F0F0F0',
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: isDark ? '#334155' : '#F1F5F9',
     },
     actionRow: {
         flexDirection: 'row',
-        gap: spacing.sm,
+        gap: 12,
     },
-    secondaryButton: {
+    readButton: {
         flex: 1,
+        paddingVertical: 10,
+        borderRadius: 14,
+        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: spacing.sm,
-        borderRadius: 12,
-        backgroundColor: isDark ? '#334155' : '#F0EDFF',
         gap: 6,
     },
-    secondaryButtonText: {
-        fontSize: 14,
+    readButtonText: {
+        color: '#6366F1',
         fontWeight: '700',
-        color: '#6A5AE0',
+        fontSize: 14,
     },
-    primaryButton: {
-        flex: 1,
-        borderRadius: 12,
+    actionButton: {
+        flex: 1.5,
+        borderRadius: 14,
         overflow: 'hidden',
-        shadowColor: '#6A5AE0',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 2,
     },
-    primaryButtonGradient: {
+    actionButtonGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: spacing.sm,
+        paddingVertical: 10,
         gap: 6,
     },
-    primaryButtonText: {
-        fontSize: 14,
-        fontWeight: '700',
+    actionButtonText: {
         color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
     },
     emptyContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: spacing.xxl,
-        gap: spacing.md,
+        paddingVertical: 40,
+        gap: 16,
     },
     emptyText: {
         fontSize: 16,
-        color: '#888',
+        color: '#94A3B8',
         fontWeight: '500',
         textAlign: 'center',
     },

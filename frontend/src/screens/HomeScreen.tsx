@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ImageBackground, Dimensions, Platform, Image, Animated as RNAnimated, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ImageBackground, Dimensions, Platform, Image, Animated as RNAnimated, Pressable, useWindowDimensions } from 'react-native';
 import { Text, Surface, ProgressBar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AVATAR_OPTIONS } from '../data/avatars'; // Shared Avatar Data
 import { spacing } from '../theme';
 
-const { width } = Dimensions.get('window');
+// const { width } = Dimensions.get('window');
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -55,10 +55,13 @@ const HomeScreen = ({ navigation }: any) => {
     const { isDark, toggleTheme } = useAppTheme();
     const insets = useSafeAreaInsets();
     const { isMobile } = useResponsive();
+    const { width } = useWindowDimensions();
     const { t } = useTranslation();
     const [showStreakCelebration, setShowStreakCelebration] = useState(false);
     const [selectedSim, setSelectedSim] = useState<Simulation | null>(null);
     const [viewerVisible, setViewerVisible] = useState(false);
+
+    const styles = getStyles(isDark, width);
 
     const [showConfetti, setShowConfetti] = useState(false);
     const [showOnboarding, setShowOnboarding] = useState(false);
@@ -95,7 +98,7 @@ const HomeScreen = ({ navigation }: any) => {
     // Starry background component
     const renderStars = () => {
         const stars = [];
-        const starStyles = getStyles(isDark);
+        const starStyles = styles;
         for (let i = 0; i < 80; i++) {
             stars.push(
                 <View
@@ -195,7 +198,7 @@ const HomeScreen = ({ navigation }: any) => {
     ];
 
     return (
-        <View style={getStyles(isDark).container}>
+        <View style={styles.container}>
             <LinearGradient
                 colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
                 style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
@@ -205,59 +208,59 @@ const HomeScreen = ({ navigation }: any) => {
 
             {/* Starry Background */}
             {isDark && (
-                <View style={getStyles(isDark).starsContainer}>
+                <View style={styles.starsContainer}>
                     {renderStars()}
                 </View>
             )}
 
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={getStyles(isDark).scrollContent}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
                 {/* 🌟 PREMIUM HEADER (Profile + Stats) */}
                 <LinearGradient
                     colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6', '#A855F7']}
-                    style={[getStyles(isDark).headerBackground, isMobile && { paddingBottom: 30 }]}
+                    style={[styles.headerBackground, isMobile && { paddingBottom: 30 }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                 >
-                    <View style={[getStyles(isDark).headerContent, { paddingTop: insets.top + (isMobile ? 10 : spacing.lg), paddingHorizontal: isMobile ? 16 : 32 }]}>
+                    <View style={[styles.headerContent, { paddingTop: insets.top + (isMobile ? 10 : spacing.lg), paddingHorizontal: isMobile ? 16 : 32 }]}>
                         {/* Profile Section */}
-                        <View style={[getStyles(isDark).profileSection, isMobile && { gap: 10 }]}>
+                        <View style={[styles.profileSection, isMobile && { gap: 10 }]}>
                             <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
                                 <Animated.View entering={FadeInDown.delay(100)}>
                                     <LinearGradient
                                         colors={currentAvatar.gradient}
-                                        style={[getStyles(isDark).avatarBorder, isMobile && { width: 44, height: 44, padding: 2 }]}
+                                        style={[styles.avatarBorder, isMobile && { width: 44, height: 44, padding: 2 }]}
                                     >
-                                        <Image source={currentAvatar.source} style={getStyles(isDark).avatarImage} />
+                                        <Image source={currentAvatar.source} style={styles.avatarImage} />
                                     </LinearGradient>
                                 </Animated.View>
                             </TouchableOpacity>
                             <Animated.View entering={FadeInRight.delay(200)}>
-                                {!isMobile && <Text style={getStyles(isDark).greeting}>Welcome back,</Text>}
-                                <Text style={[getStyles(isDark).userName, isMobile && { fontSize: 18 }]}>{user?.name?.split(' ')[0] || 'Student'}</Text>
+                                {!isMobile && <Text style={styles.greeting}>Welcome back,</Text>}
+                                <Text style={[styles.userName, isMobile && { fontSize: 18 }]}>{user?.name?.split(' ')[0] || 'Student'}</Text>
                             </Animated.View>
                         </View>
 
                         {/* Stats: XP, Streak, Settings */}
-                        <View style={[getStyles(isDark).statsContainer, isMobile && { gap: 8 }]}>
+                        <View style={[styles.statsContainer, isMobile && { gap: 8 }]}>
                             {/* Stats content remains same but container flexes */}
-                            <Animated.View entering={FadeInDown.delay(300)} style={[getStyles(isDark).streakBadge, isMobile && { paddingHorizontal: 8, paddingVertical: 4, gap: 4 }]}>
+                            <Animated.View entering={FadeInDown.delay(300)} style={[styles.streakBadge, isMobile && { paddingHorizontal: 8, paddingVertical: 4, gap: 4 }]}>
                                 <MaterialCommunityIcons name="fire" size={isMobile ? 16 : 24} color="#FF6B6B" />
-                                <Text style={[getStyles(isDark).streakText, isMobile && { fontSize: 13 }]}>{streak}</Text>
+                                <Text style={[styles.streakText, isMobile && { fontSize: 13 }]}>{streak}</Text>
                             </Animated.View>
                             {/* ... Toggles remain ... */}
                             <Animated.View entering={FadeInDown.delay(400)}>
-                                <TouchableOpacity style={getStyles(isDark).darkModeToggle} onPress={toggleTheme}>
-                                    <View style={[getStyles(isDark).toggleGradient, isMobile && { width: 32, height: 32 }]}>
+                                <TouchableOpacity style={styles.darkModeToggle} onPress={toggleTheme}>
+                                    <View style={[styles.toggleGradient, isMobile && { width: 32, height: 32 }]}>
                                         <MaterialCommunityIcons name={isDark ? 'weather-sunny' : 'moon-waning-crescent'} size={16} color={isDark ? '#FCD34D' : '#fff'} />
                                     </View>
                                 </TouchableOpacity>
                             </Animated.View>
                             <Animated.View entering={FadeInDown.delay(500)}>
-                                <TouchableOpacity style={getStyles(isDark).rewardsIcon} onPress={() => navigation.navigate('Rewards')}>
-                                    <View style={[getStyles(isDark).rewardsIcon, isMobile && { width: 32, height: 32 }]}>
+                                <TouchableOpacity style={styles.rewardsIcon} onPress={() => navigation.navigate('Rewards')}>
+                                    <View style={[styles.rewardsIcon, isMobile && { width: 32, height: 32 }]}>
                                         <MaterialCommunityIcons name="crown" size={18} color="#FFD700" />
                                     </View>
                                 </TouchableOpacity>
@@ -266,9 +269,9 @@ const HomeScreen = ({ navigation }: any) => {
                     </View>
 
                     {/* XP Progress Card - ULT COMPACT MOBILE */}
-                    <View style={[getStyles(isDark).xpCardSection, isMobile && { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 0 }]}>
-                        <View style={[getStyles(isDark).xpCard, isMobile && { padding: 10, borderRadius: 12, borderWidth: 0, backgroundColor: 'rgba(0,0,0,0.2)' }]}>
-                            <View style={[getStyles(isDark).xpCardContent, isMobile && { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }]}>
+                    <View style={[styles.xpCardSection, isMobile && { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 0 }]}>
+                        <View style={[styles.xpCard, isMobile && { padding: 10, borderRadius: 12, borderWidth: 0, backgroundColor: 'rgba(0,0,0,0.2)' }]}>
+                            <View style={[styles.xpCardContent, isMobile && { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }]}>
                                 {/* Mobile: Clean Row Layout */}
                                 {isMobile ? (
                                     <>
@@ -289,20 +292,20 @@ const HomeScreen = ({ navigation }: any) => {
                                 ) : (
                                     // Desktop / Tablet Layout (Original)
                                     <>
-                                        <View style={getStyles(isDark).xpHeader}>
+                                        <View style={styles.xpHeader}>
                                             <MaterialCommunityIcons name="star-four-points" size={20} color={isDark ? "#FFD700" : "#F59E0B"} />
-                                            <Text style={getStyles(isDark).xpTitle}>Total XP</Text>
-                                            <Text style={getStyles(isDark).xpValue}>{totalXP} XP</Text>
+                                            <Text style={styles.xpTitle}>Total XP</Text>
+                                            <Text style={styles.xpValue}>{totalXP} XP</Text>
                                         </View>
-                                        <View style={getStyles(isDark).progressContainer}>
+                                        <View style={styles.progressContainer}>
                                             <LinearGradient
                                                 colors={isDark ? ['#FFD700', '#FFA500'] : ['#FBBF24', '#F59E0B']}
-                                                style={[getStyles(isDark).progressFill, { width: `${Math.min(levelProgress, 100)}%` }]}
+                                                style={[styles.progressFill, { width: `${Math.min(levelProgress, 100)}%` }]}
                                                 start={{ x: 0, y: 0 }}
                                                 end={{ x: 1, y: 0 }}
                                             />
                                         </View>
-                                        <Text style={getStyles(isDark).nextLevelText}>Level {level} • {currentLevelXP}/{xpNeededForLevel} XP to Level {level + 1}</Text>
+                                        <Text style={styles.nextLevelText}>Level {level} • {currentLevelXP}/{xpNeededForLevel} XP to Level {level + 1}</Text>
                                     </>
                                 )}
                             </View>
@@ -311,20 +314,20 @@ const HomeScreen = ({ navigation }: any) => {
                 </LinearGradient>
 
                 {/* 🚀 MAIN CONTENT AREA (Overlapping Header) */}
-                <View style={[getStyles(isDark).mainContainer, isMobile && { marginTop: -20 }]}>
+                <View style={[styles.mainContainer, isMobile && { marginTop: -20 }]}>
 
                     {/* 📦 BENTO GRID (Unstructured but Aligned) */}
-                    <View style={getStyles(isDark).bentoGrid}>
+                    <View style={styles.bentoGrid}>
                         {BENTO_ITEMS.map((item, index) => {
                             // Custom Renderer for Science Banner
                             if (item.id === 'science_interactive') {
                                 return (
                                     <ScaleButton
                                         key={item.id}
-                                        style={[getStyles(isDark).bentoItem, { flexBasis: '100%', height: (item as any).height || 90 }]}
+                                        style={[styles.bentoItem, { flexBasis: '100%', height: (item as any).height || 90 }]}
                                         onPress={() => navigation.navigate(item.route, { screen: item.screen })}
                                     >
-                                        <Surface style={[getStyles(isDark).bentoSurface, { borderRadius: 20 }]} elevation={3}>
+                                        <Surface style={[styles.bentoSurface, { borderRadius: 20 }]} elevation={3}>
                                             <LinearGradient
                                                 colors={item.gradient as any}
                                                 start={{ x: 0, y: 0.5 }}
@@ -375,7 +378,7 @@ const HomeScreen = ({ navigation }: any) => {
                                 // Mobile Logic: More Aggressive 2-Column Layout
                                 // Only span full width if it's explicitly a 12-col banner
                                 if (item.colSpan >= 12) itemWidth = '100%';
-                                else itemWidth = '47%';
+                                else itemWidth = '48%'; // Tighter fit
                             } else {
                                 // Desktop Logic: Keep existing precise percentages
                                 const getSafeBasis = (span: number) => {
@@ -393,16 +396,16 @@ const HomeScreen = ({ navigation }: any) => {
                             return (
                                 <ScaleButton
                                     key={item.id}
-                                    style={[getStyles(isDark).bentoItem, {
+                                    style={[styles.bentoItem, {
                                         flexBasis: itemWidth,
                                         height: itemHeight
                                     }]}
                                     onPress={() => navigation.navigate(item.route, { screen: item.screen })}
                                 >
-                                    <Surface style={getStyles(isDark).bentoSurface} elevation={2}>
+                                    <Surface style={styles.bentoSurface} elevation={2}>
                                         <LinearGradient
                                             colors={item.gradient as any}
-                                            style={getStyles(isDark).bentoGradient}
+                                            style={styles.bentoGradient}
                                             start={{ x: 0, y: 0 }}
                                             end={{ x: 1, y: 1 }}
                                         >
@@ -422,8 +425,8 @@ const HomeScreen = ({ navigation }: any) => {
 
                                             <MaterialCommunityIcons name={item.icon as any} size={isLarge ? 32 : 24} color="#fff" />
                                             <View>
-                                                <Text style={[getStyles(isDark).bentoTitle, { fontSize: isLarge ? 18 : 14 }]}>{item.label}</Text>
-                                                {isLarge && <Text style={getStyles(isDark).bentoSubtitle}>{item.subtitle}</Text>}
+                                                <Text style={[styles.bentoTitle, { fontSize: isLarge ? 18 : 14 }]}>{item.label}</Text>
+                                                {isLarge && <Text style={styles.bentoSubtitle}>{item.subtitle}</Text>}
                                             </View>
                                         </LinearGradient>
                                     </Surface>
@@ -433,22 +436,22 @@ const HomeScreen = ({ navigation }: any) => {
                     </View>
 
                     {/* 🧪 SIMULATIONS SECTION */}
-                    <View style={getStyles(isDark).simSection}>
-                        <View style={getStyles(isDark).sectionHeaderRow}>
+                    <View style={styles.simSection}>
+                        <View style={styles.sectionHeaderRow}>
                             <View>
-                                <Text style={getStyles(isDark).sectionHeader}>Featured Simulations</Text>
-                                <Text style={getStyles(isDark).sectionSubHeader}>Interactive 3D Models & Labs</Text>
+                                <Text style={styles.sectionHeader}>Featured Simulations</Text>
+                                <Text style={styles.sectionSubHeader}>Interactive 3D Models & Labs</Text>
                             </View>
                             <TouchableOpacity
-                                style={getStyles(isDark).exploreBtn}
+                                style={styles.exploreBtn}
                                 onPress={() => navigation.navigate('Learn', { screen: 'SimulationList' })}
                             >
-                                <Text style={getStyles(isDark).exploreBtnText}>Explore All</Text>
+                                <Text style={styles.exploreBtnText}>Explore All</Text>
                                 <MaterialCommunityIcons name="arrow-right" size={16} color="#4F46E5" />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={getStyles(isDark).simScroll}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.simScroll}>
                             {featuredSimulations.map((sim, index) => {
                                 const isPhysics = sim.subject === 'Physics';
                                 const isChem = sim.subject === 'Chemistry';
@@ -457,35 +460,35 @@ const HomeScreen = ({ navigation }: any) => {
                                 const imageUrl = getSimImage(sim.title, sim.subject);
 
                                 return (
-                                    <View key={sim.fileName} style={getStyles(isDark).simCardWrapper}>
+                                    <View key={sim.fileName} style={styles.simCardWrapper}>
                                         <TouchableOpacity
-                                            style={getStyles(isDark).simCardPremium}
+                                            style={styles.simCardPremium}
                                             activeOpacity={0.9}
                                             onPress={() => {
                                                 setSelectedSim(sim);
                                                 setViewerVisible(true);
                                             }}
                                         >
-                                            <View style={getStyles(isDark).simPreviewPremium}>
+                                            <View style={styles.simPreviewPremium}>
                                                 <Image
                                                     source={imageUrl as any}
-                                                    style={getStyles(isDark).simImage}
+                                                    style={styles.simImage}
                                                     resizeMode="cover"
                                                 />
                                                 <LinearGradient
                                                     colors={['transparent', 'rgba(0,0,0,0.3)']}
-                                                    style={getStyles(isDark).simImageOverlay}
+                                                    style={styles.simImageOverlay}
                                                 />
-                                                <View style={[getStyles(isDark).playOverlay, { backgroundColor: subColor }]}>
+                                                <View style={[styles.playOverlay, { backgroundColor: subColor }]}>
                                                     <MaterialCommunityIcons name="play" size={20} color="#fff" />
                                                 </View>
                                             </View>
 
-                                            <View style={getStyles(isDark).simContentPremium}>
-                                                <View style={[getStyles(isDark).simBadge, { backgroundColor: subBg }]}>
-                                                    <Text style={[getStyles(isDark).simSubject, { color: subColor }]}>{sim.subject}</Text>
+                                            <View style={styles.simContentPremium}>
+                                                <View style={[styles.simBadge, { backgroundColor: subBg }]}>
+                                                    <Text style={[styles.simSubject, { color: subColor }]}>{sim.subject}</Text>
                                                 </View>
-                                                <Text numberOfLines={2} style={getStyles(isDark).simTitlePremium}>{sim.title}</Text>
+                                                <Text numberOfLines={2} style={styles.simTitlePremium}>{sim.title}</Text>
                                             </View>
                                         </TouchableOpacity>
                                     </View>
@@ -533,7 +536,7 @@ const HomeScreen = ({ navigation }: any) => {
     );
 };
 
-const getStyles = (isDark: boolean) => StyleSheet.create({
+const getStyles = (isDark: boolean, width: number) => StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -699,7 +702,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     // Main Content
     mainContainer: {
         marginTop: -60, // Overlap
-        paddingHorizontal: 24,
+        paddingHorizontal: Platform.OS === 'web' && width > 768 ? 24 : 16, // Reduced padding on mobile
         maxWidth: 1000,
         width: '100%',
         alignSelf: 'center',
@@ -750,7 +753,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     bentoGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
+        gap: Platform.OS === 'web' && width > 768 ? 16 : 12, // Smaller gap for mobile
         justifyContent: 'center', // Align center
     },
     bentoItem: {
@@ -819,7 +822,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
         marginRight: 20,
     },
     simCardPremium: {
-        width: 200,
+        width: Platform.OS === 'web' && width > 768 ? 200 : 160,
         backgroundColor: '#fff',
         borderRadius: 20,
         shadowColor: '#64748B',

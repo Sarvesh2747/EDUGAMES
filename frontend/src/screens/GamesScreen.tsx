@@ -311,20 +311,39 @@ const GamesScreen = ({ navigation }: any) => {
 
     return (
         <View style={styles.container}>
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
+                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={{ paddingBottom: 100, paddingTop: insets.top }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
             >
-                <UnifiedHeader
-                    title="Game Zone"
-                    subtitle="Play to learn! 🎮"
-                    icon="gamepad-variant"
-                />
+                <LinearGradient
+                    colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6', '#A855F7']}
+                    style={styles.headerBackground}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                >
+                    <View style={[styles.headerContent, { paddingTop: insets.top + (isMobile ? 10 : spacing.lg), paddingHorizontal: isMobile ? 16 : 32 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                            <View style={styles.headerIcon}>
+                                <MaterialCommunityIcons name="gamepad-variant" size={30} color="#fff" />
+                            </View>
+                            <View>
+                                <Text style={styles.headerTitle}>Game Zone</Text>
+                                <Text style={styles.headerSubtitle}>Play to learn! 🎮</Text>
+                            </View>
+                        </View>
+                    </View>
+                </LinearGradient>
 
-                <View style={[styles.contentContainer, { marginTop: -40, paddingBottom: 120 }]}>
+                <View style={[styles.contentContainer, { marginTop: 10, paddingBottom: 120 }]}>
                     {renderSection('Science Lab', 'flask', groupedGames.Science, 0)}
                     {renderSection('Math Zone', 'calculator', groupedGames.Math, 200)}
                     {renderSection('Brain Teasers', 'puzzle', groupedGames.Logic, 400)}
@@ -344,11 +363,10 @@ const createStyles = (isDark: boolean, isMobile: boolean) => StyleSheet.create({
         flex: 1,
     },
     headerBackground: {
-        paddingVertical: spacing.xl,
-        paddingHorizontal: spacing.xl,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        marginBottom: spacing.lg,
+        paddingBottom: 80, // Spacious bottom for overlap
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        marginBottom: 0, // No margin, content pulls up
         shadowColor: '#6366F1',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.25,
@@ -370,7 +388,7 @@ const createStyles = (isDark: boolean, isMobile: boolean) => StyleSheet.create({
         alignSelf: 'center',
     },
     headerTitle: {
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: '800',
         color: '#fff',
         letterSpacing: -1
@@ -381,9 +399,9 @@ const createStyles = (isDark: boolean, isMobile: boolean) => StyleSheet.create({
         marginTop: 4
     },
     headerIcon: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',

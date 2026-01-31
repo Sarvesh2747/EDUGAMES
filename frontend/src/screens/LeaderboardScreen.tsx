@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, FlatList, StyleSheet, Text, TouchableOpacity, Image, ActivityIndicator, useWindowDimensions, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import GradientBackground from '../components/ui/GradientBackground';
 import CustomCard from '../components/ui/CustomCard';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const AVATAR_OPTIONS = [
     { id: 1, source: require('../assets/avatars/avatar_student_1_1763752373295.png'), gradient: ['#FF6B6B', '#FF8E53'] as const },
@@ -38,8 +38,10 @@ const LeaderboardScreen = () => {
     const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'week', 'month'
+    const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
 
-    const styles = createStyles(isDark);
+    const styles = createStyles(isDark, insets);
 
     // Helper function to get avatar source from avatar ID
     const getAvatarSource = (avatarId?: string) => {
@@ -64,6 +66,29 @@ const LeaderboardScreen = () => {
         }
     };
 
+    // Starry background component (From HomeScreen)
+    const renderStars = () => {
+        const stars = [];
+        for (let i = 0; i < 80; i++) {
+            stars.push(
+                <View
+                    key={i}
+                    style={[
+                        styles.star,
+                        {
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            width: Math.random() * 3 + 1,
+                            height: Math.random() * 3 + 1,
+                            opacity: Math.random() * 0.8 + 0.2,
+                        },
+                    ]}
+                />
+            );
+        }
+        return stars;
+    };
+
     const renderTopThree = () => {
         if (leaderboard.length < 3) return null;
 
@@ -74,11 +99,11 @@ const LeaderboardScreen = () => {
                 {/* Second Place */}
                 <View style={styles.podiumItem}>
                     <LinearGradient
-                        colors={['#E5E7EB', '#9CA3AF']}
+                        colors={isDark ? ['rgba(229, 231, 235, 0.2)', 'rgba(156, 163, 175, 0.2)'] : ['#E5E7EB', '#9CA3AF']}
                         style={styles.podiumCard}
                     >
                         <View style={styles.rankBadge}>
-                            <MaterialCommunityIcons name="medal" size={24} color="#9CA3AF" />
+                            <MaterialCommunityIcons name="medal" size={24} color="#C0C0C0" />
                             <Text style={styles.rankNumber}>2</Text>
                         </View>
                         <View style={styles.avatarWrapper}>
@@ -146,11 +171,11 @@ const LeaderboardScreen = () => {
                 {/* Third Place */}
                 <View style={styles.podiumItem}>
                     <LinearGradient
-                        colors={['#FED7AA', '#B45309']}
+                        colors={isDark ? ['rgba(254, 215, 170, 0.2)', 'rgba(180, 83, 9, 0.2)'] : ['#FED7AA', '#B45309']}
                         style={styles.podiumCard}
                     >
                         <View style={styles.rankBadge}>
-                            <MaterialCommunityIcons name="medal" size={24} color="#B45309" />
+                            <MaterialCommunityIcons name="medal" size={24} color="#CD7F32" />
                             <Text style={styles.rankNumber}>3</Text>
                         </View>
                         <View style={styles.avatarWrapper}>
@@ -208,12 +233,12 @@ const LeaderboardScreen = () => {
                             <Text style={[styles.name, isCurrentUser && styles.currentUserName]}>
                                 {item.name} {isCurrentUser && '(You)'}
                             </Text>
-                            {item.achievements && item.achievements.length > 0 && (
+                            {/* {item.achievements && item.achievements.length > 0 && (
                                 <View style={styles.achievementBadge}>
                                     <MaterialCommunityIcons name="trophy-variant" size={12} color="#F59E0B" />
                                     <Text style={styles.achievementCount}>{item.achievements.length}</Text>
                                 </View>
-                            )}
+                            )} */}
                         </View>
                         <View style={styles.detailsRow}>
                             <View style={styles.detailItem}>
@@ -249,15 +274,31 @@ const LeaderboardScreen = () => {
     };
 
     return (
-        <GradientBackground>
-            <View style={styles.container}>
-                {/* Header */}
-                <LinearGradient
-                    colors={['#2563EB', '#60A5FA']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.headerBackground}
-                >
+        <View style={styles.container}>
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
+                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+
+            {/* Starry Background */}
+            {isDark && (
+                <View style={styles.starsContainer}>
+                    {renderStars()}
+                </View>
+            )}
+
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+
+            {/* Premium Header */}
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6', '#A855F7']}
+                style={styles.headerBackground}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
+                <View style={styles.headerContent}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
@@ -266,33 +307,35 @@ const LeaderboardScreen = () => {
                         <Text style={styles.headerTitle}>Leaderboard</Text>
                     </View>
                     <LanguageSwitcher />
-                </LinearGradient>
+                </View>
 
-                {/* Time Filter */}
+                {/* Time Filter INSIDE Header */}
                 <View style={styles.filterContainer}>
                     <TouchableOpacity
                         style={[styles.filterButton, timeFilter === 'all' && styles.filterButtonActive]}
                         onPress={() => setTimeFilter('all')}
                     >
-                        <Text style={styles.filterButtonText}>All Time</Text>
+                        <Text style={[styles.filterButtonText, timeFilter === 'all' && styles.filterButtonTextActive]}>All Time</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.filterButton, timeFilter === 'month' && styles.filterButtonActive]}
                         onPress={() => setTimeFilter('month')}
                     >
-                        <Text style={styles.filterButtonText}>This Month</Text>
+                        <Text style={[styles.filterButtonText, timeFilter === 'month' && styles.filterButtonTextActive]}>This Month</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.filterButton, timeFilter === 'week' && styles.filterButtonActive]}
                         onPress={() => setTimeFilter('week')}
                     >
-                        <Text style={styles.filterButtonText}>This Week</Text>
+                        <Text style={[styles.filterButtonText, timeFilter === 'week' && styles.filterButtonTextActive]}>This Week</Text>
                     </TouchableOpacity>
                 </View>
+            </LinearGradient>
 
+            <View style={{ flex: 1, marginTop: -20 }}>
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#2563EB" />
+                        <ActivityIndicator size="large" color="#6366F1" />
                         <Text style={styles.loadingText}>Loading rankings...</Text>
                     </View>
                 ) : (
@@ -313,27 +356,40 @@ const LeaderboardScreen = () => {
                     />
                 )}
             </View>
-        </GradientBackground>
+        </View>
     );
 };
 
-const createStyles = (isDark: boolean) => StyleSheet.create({
+const createStyles = (isDark: boolean, insets: any) => StyleSheet.create({
     container: {
         flex: 1,
     },
+    starsContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 0,
+    },
+    star: {
+        position: 'absolute',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 50,
+    },
     headerBackground: {
+        paddingTop: insets.top + 10,
+        paddingBottom: 40,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        zIndex: 10,
+    },
+    headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingTop: 60, // Status bar space
-        paddingBottom: 30, // Increased from 20
-        paddingHorizontal: 24, // Increased from 20
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-        zIndex: 10, // Ensure it sits above content
+        paddingHorizontal: 24,
+        marginBottom: 20,
     },
     backButton: {
         width: 44,
@@ -358,33 +414,35 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     filterContainer: {
         flexDirection: 'row',
         gap: 12,
-        paddingHorizontal: 24, // Increased from 20
-        marginTop: 20, // Added margin top
-        marginBottom: 24, // Increased from 20
+        paddingHorizontal: 24,
     },
     filterButton: {
         flex: 1,
-        paddingHorizontal: 16,
-        paddingVertical: 12, // Increased from 10
-        borderRadius: 20,
-        backgroundColor: isDark ? '#334155' : 'rgba(255, 255, 255, 0.2)',
+        paddingVertical: 10,
+        borderRadius: 25,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
         borderWidth: 1,
-        borderColor: isDark ? '#475569' : 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
     },
     filterButtonActive: {
-        backgroundColor: '#2563EB',
-        borderColor: '#2563EB',
+        backgroundColor: '#fff',
+        borderColor: '#fff',
     },
     filterButtonText: {
-        color: '#fff',
+        color: 'rgba(255, 255, 255, 0.9)',
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: 13,
+    },
+    filterButtonTextActive: {
+        color: '#4F46E5',
+        fontWeight: 'bold',
     },
     podiumContainer: {
         flexDirection: 'row',
         paddingHorizontal: 20,
-        marginBottom: 30,
+        marginBottom: 20,
+        marginTop: 20,
         alignItems: 'flex-end',
         gap: 12,
     },
@@ -399,68 +457,75 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2, // Increased opacity for better visibility
+        shadowRadius: 8,
+        elevation: 6,
+        borderWidth: 1, // Add border to define edges better
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)',
     },
     firstPlaceCard: {
         padding: 20,
+        shadowOpacity: 0.3,
+        elevation: 10,
     },
     crownContainer: {
         position: 'absolute',
-        top: -20,
+        top: -24,
     },
     rankBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 10,
     },
     rankNumber: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#fff',
+        color: isDark ? '#F3F4F6' : '#1F2937', // Darker text on light podiums
         marginLeft: 4,
     },
     firstRankNumber: {
-        fontSize: 20,
+        fontSize: 22,
+        color: '#FFFFFF', // First place usually has saturated bg
     },
     avatarWrapper: {
         position: 'relative',
-        marginBottom: 12,
+        marginBottom: 10,
     },
     podiumAvatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        borderWidth: 3,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        borderWidth: 2,
         borderColor: '#fff',
     },
     podiumAvatarLarge: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        borderWidth: 4,
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        borderWidth: 3,
         borderColor: '#fff',
     },
     glowRing: {
         position: 'absolute',
-        width: 90,
-        height: 90,
-        borderRadius: 45,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
         borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
         top: -5,
         left: -5,
     },
     podiumName: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700',
-        color: '#fff',
-        marginBottom: 4,
+        color: isDark ? '#F3F4F6' : '#1F2937',
+        marginBottom: 2,
+        textAlign: 'center',
     },
     firstPlaceName: {
-        fontSize: 16,
+        fontSize: 15,
+        color: '#FFFFFF',
     },
     statsRow: {
         flexDirection: 'row',
@@ -468,46 +533,47 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         marginBottom: 4,
     },
     podiumXP: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#fff',
+        fontSize: 11,
+        fontWeight: '700',
+        color: isDark ? '#FCD34D' : '#D97706',
         marginLeft: 4,
     },
     firstPlaceXP: {
-        fontSize: 14,
+        fontSize: 13,
+        color: '#FFF',
     },
     podiumLevel: {
-        fontSize: 11,
-        color: 'rgba(255, 255, 255, 0.8)',
+        fontSize: 10,
+        color: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
     },
     firstPlaceLevel: {
-        fontSize: 12,
+        fontSize: 11,
+        color: 'rgba(255, 255, 255, 0.9)',
     },
     streakBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 3,
         borderRadius: 12,
-        marginTop: 8,
+        marginTop: 6,
     },
     firstStreakBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
     },
     streakText: {
-        fontSize: 10,
-        color: '#fff',
-        fontWeight: '600',
+        fontSize: 9,
+        color: isDark ? '#FFF' : '#1F2937',
+        fontWeight: '700',
         marginLeft: 4,
     },
     firstStreakText: {
-        fontSize: 11,
+        color: '#FFF',
     },
     listContent: {
-        paddingBottom: 40, // Increased from 20
-        paddingTop: 10, // Added top padding
+        paddingBottom: 40,
+        paddingTop: 0,
     },
     card: {
         flexDirection: 'row',
@@ -516,26 +582,29 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         marginHorizontal: 20,
         marginBottom: 12,
         borderRadius: 16,
-        backgroundColor: isDark ? '#1E293B' : '#fff',
+        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)', // Glassmorphism-ish
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.05,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
     },
     currentUserCard: {
         borderWidth: 2,
-        borderColor: '#2563EB',
+        borderColor: '#6366F1',
+        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(240, 249, 255, 0.9)',
     },
     rankContainer: {
-        width: 40,
+        width: 35,
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 10,
     },
     rankText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        color: isDark ? '#60A5FA' : '#2563EB',
+        color: isDark ? '#94A3B8' : '#64748B',
     },
     userInfo: {
         flex: 1,
@@ -546,29 +615,29 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         marginRight: 12,
     },
     avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
     },
     avatarPlaceholder: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarPlaceholderLarge: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: 70,
+        height: 70,
+        borderRadius: 35,
     },
     avatarText: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: '#fff',
     },
     avatarTextLarge: {
-        fontSize: 32,
+        fontSize: 28,
     },
     userDetails: {
         flex: 1,
@@ -576,16 +645,16 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     nameRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 3,
     },
     name: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: isDark ? '#F1F5F9' : '#1A1A1A',
-        marginRight: 8,
+        color: isDark ? '#F1F5F9' : '#1E293B',
+        marginRight: 6,
     },
     currentUserName: {
-        color: '#2563EB',
+        color: '#6366F1',
     },
     achievementBadge: {
         flexDirection: 'row',
@@ -603,42 +672,42 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     },
     detailsRow: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 10,
     },
     detailItem: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     detailText: {
-        fontSize: 12,
-        color: isDark ? '#CBD5E1' : '#6B7280',
-        marginLeft: 4,
+        fontSize: 11,
+        color: isDark ? '#94A3B8' : '#64748B',
+        marginLeft: 3,
     },
     xpContainer: {
         alignItems: 'flex-end',
     },
     xpValue: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        color: isDark ? '#60A5FA' : '#2563EB',
-        marginBottom: 2,
+        color: '#6366F1',
+        marginBottom: 1,
     },
     xpLabel: {
-        fontSize: 11,
-        color: isDark ? '#94A3B8' : '#9CA3AF',
+        fontSize: 10,
+        color: isDark ? '#94A3B8' : '#64748B',
         fontWeight: '600',
     },
     weeklyXPBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#D1FAE5',
-        paddingHorizontal: 6,
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        paddingHorizontal: 5,
         paddingVertical: 2,
-        borderRadius: 8,
-        marginTop: 4,
+        borderRadius: 6,
+        marginTop: 3,
     },
     weeklyXPText: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '700',
         color: '#10B981',
         marginLeft: 2,
@@ -650,7 +719,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         gap: 15,
     },
     loadingText: {
-        color: isDark ? '#CBD5E1' : '#6B7280',
+        color: isDark ? '#CBD5E1' : '#64748B',
         fontSize: 14,
         fontWeight: '600',
     },
@@ -660,14 +729,15 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
         gap: 12,
     },
     emptyText: {
-        color: isDark ? '#CBD5E1' : '#6B7280',
+        color: isDark ? '#CBD5E1' : '#64748B',
         fontSize: 18,
         fontWeight: '700',
     },
     emptySubtext: {
-        color: isDark ? '#94A3B8' : '#9CA3AF',
+        color: isDark ? '#94A3B8' : '#94A3B8',
         fontSize: 14,
         textAlign: 'center',
+        paddingHorizontal: 40,
     },
 });
 

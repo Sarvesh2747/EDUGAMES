@@ -63,7 +63,6 @@ const ProfileScreen = ({ navigation }: any) => {
     const confirmLogout = async () => {
         setShowLogoutConfirm(false);
         await logout();
-        navigation.replace('Welcome');
     };
 
     return (

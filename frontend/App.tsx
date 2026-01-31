@@ -37,7 +37,17 @@ if (__DEV__) {
       message.includes('useNativeDriver') ||
       message.includes('React DevTools') ||
       message.includes('aria-hidden') ||
-      message.includes('deprecated')
+      message.includes('aria-hidden') ||
+      message.includes('deprecated') ||
+      message.includes('transform-origin') ||
+      message.includes('Invalid DOM property') ||
+      message.includes('onStartShouldSetResponder') ||
+      message.includes('Unknown event handler property') ||
+      message.includes('onResponderTerminationRequest') ||
+      message.includes('onResponderGrant') ||
+      message.includes('onResponderMove') ||
+      message.includes('onResponderRelease') ||
+      message.includes('onResponderTerminate')
     ) {
       return;
     }
@@ -49,7 +59,12 @@ if (__DEV__) {
     // Only suppress specific non-critical errors
     if (
       message.includes('Download the React DevTools') ||
-      message.includes('deprecated')
+      message.includes('Download the React DevTools') ||
+      message.includes('deprecated') ||
+      message.includes('transform-origin') ||
+      message.includes('Invalid DOM property') ||
+      message.includes('onStartShouldSetResponder') ||
+      message.includes('Unknown event handler property')
     ) {
       return;
     }

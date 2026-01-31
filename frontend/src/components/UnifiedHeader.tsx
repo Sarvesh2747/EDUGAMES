@@ -39,7 +39,7 @@ const UnifiedHeader = ({ title, subtitle, icon, hideStats = false }: UnifiedHead
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
         >
-            <View style={[styles.headerContent, { paddingTop: insets.top + (isMobile ? 10 : spacing.lg), paddingHorizontal: isMobile ? 16 : 32 }]}>
+            <View style={[styles.headerContent, { paddingTop: insets.top + (isMobile ? 20 : 36), paddingHorizontal: isMobile ? 16 : 32 }]}>
                 {/* Profile / Title Section */}
                 <View style={[styles.profileSection, isMobile && { gap: 10 }]}>
                     <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>

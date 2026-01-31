@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, StatusBar, Platform } from 'react-native';
 import { Text, Surface, useTheme, Searchbar, Chip, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -112,7 +112,7 @@ const SimulationListScreen = ({ route, navigation }: any) => {
         return (
             <Animated.View
                 key={sim.fileName}
-                entering={FadeInDown.delay(index * 50).duration(400).springify()}
+                entering={Platform.OS === 'web' ? undefined : FadeInDown.delay(index * 50).duration(400).springify()}
                 style={[styles.cardWrapper, { width: `${100 / getGridColumns()}%` }]}
             >
                 <TouchableOpacity
@@ -167,9 +167,9 @@ const SimulationListScreen = ({ route, navigation }: any) => {
                 end={{ x: 1, y: 1 }}
                 style={[styles.headerBackground, { paddingTop: insets.top + spacing.md }]}
             >
-                <Animated.View entering={FadeInDown.duration(500)} style={styles.headerContent}>
+                <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInDown.duration(500)} style={styles.headerContent}>
                     <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <TouchableOpacity onPress={() => navigation.navigate('HomeTab' as any)} style={styles.backButton}>
                             <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
@@ -187,7 +187,7 @@ const SimulationListScreen = ({ route, navigation }: any) => {
 
             <View style={styles.contentContainer}>
                 {/* Search */}
-                <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.searchContainer}>
+                <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInUp.delay(200).duration(600)} style={styles.searchContainer}>
                     <Searchbar
                         placeholder="Search simulations..."
                         onChangeText={setSearchQuery}
@@ -201,7 +201,7 @@ const SimulationListScreen = ({ route, navigation }: any) => {
 
                 {/* Subject Filter */}
                 {!subchapterSims && (
-                    <Animated.View entering={FadeInUp.delay(300).duration(600)}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeInUp.delay(300).duration(600)}>
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
@@ -244,7 +244,7 @@ const SimulationListScreen = ({ route, navigation }: any) => {
 
                 {/* Results Count */}
                 {!loading && (
-                    <Animated.View entering={FadeIn.delay(400)} style={styles.resultsContainer}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeIn.delay(400)} style={styles.resultsContainer}>
                         <Text variant="bodyMedium" style={styles.resultsText}>
                             {filteredSims.length} {filteredSims.length === 1 ? 'simulation' : 'simulations'} found
                         </Text>
@@ -260,7 +260,7 @@ const SimulationListScreen = ({ route, navigation }: any) => {
                         </Text>
                     </View>
                 ) : filteredSims.length === 0 ? (
-                    <Animated.View entering={FadeIn.duration(600)} style={styles.emptyContainer}>
+                    <Animated.View entering={Platform.OS === 'web' ? undefined : FadeIn.duration(600)} style={styles.emptyContainer}>
                         <View style={styles.emptyIconContainer}>
                             <MaterialCommunityIcons name="flask-empty-outline" size={80} color="#ccc" />
                         </View>

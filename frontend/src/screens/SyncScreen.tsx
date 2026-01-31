@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Platform } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import { Text, useTheme, Surface } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,15 +9,18 @@ import { useSync } from '../context/SyncContext';
 import { getQueueItems, clearQueue, QueueItem, subscribeToQueue } from '../offline/syncQueue';
 import { spacing } from '../theme';
 import { useResponsive } from '../hooks/useResponsive';
+import { useAppTheme } from '../context/ThemeContext';
 
 const SyncScreen = ({ navigation }: any) => {
     const theme = useTheme();
     const insets = useSafeAreaInsets();
+    const { isDark } = useAppTheme();
     const { isSyncing, isOffline, pendingItems, syncNow } = useSync();
     const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const { containerStyle } = useResponsive();
 
+    // Animation for Sync Icon
     const rotation = useSharedValue(0);
 
     useEffect(() => {
@@ -44,12 +47,9 @@ const SyncScreen = ({ navigation }: any) => {
 
     useEffect(() => {
         loadQueueItems();
-
         const unsubscribe = subscribeToQueue((items) => {
             setQueueItems(items);
-            console.log('[SyncScreen] Queue updated:', items.length, 'items');
         });
-
         return () => {
             unsubscribe();
         };
@@ -91,7 +91,7 @@ const SyncScreen = ({ navigation }: any) => {
             case 'SUBMIT_QUIZ_RESULT': return 'school-outline';
             case 'SUBMIT_GAME_RESULT': return 'gamepad-variant-outline';
             case 'GENERIC_SYNC': return 'sync';
-            case 'SYNC_XP': return 'star-outline';
+            case 'SYNC_XP': return 'star-four-points-outline';
             case 'SYNC_CHAPTER_PROGRESS': return 'book-check-outline';
             default: return 'file-document-outline';
         }
@@ -99,484 +99,427 @@ const SyncScreen = ({ navigation }: any) => {
 
     const getTypeGradient = (type: QueueItem['type']): readonly [string, string] => {
         switch (type) {
-            case 'SUBMIT_QUIZ_RESULT': return ['#667eea', '#764ba2'];
-            case 'SUBMIT_GAME_RESULT': return ['#f093fb', '#f5576c'];
-            case 'GENERIC_SYNC': return ['#30cfd0', '#330867'];
-            case 'SYNC_XP': return ['#fa709a', '#fee140'];
-            case 'SYNC_CHAPTER_PROGRESS': return ['#43e97b', '#38f9d7'];
-            default: return ['#a8edea', '#fed6e3'];
+            case 'SUBMIT_QUIZ_RESULT': return ['#6366F1', '#4F46E5'];
+            case 'SUBMIT_GAME_RESULT': return ['#F472B6', '#DB2777'];
+            case 'GENERIC_SYNC': return ['#3B82F6', '#2563EB'];
+            case 'SYNC_XP': return ['#FBBF24', '#F59E0B'];
+            case 'SYNC_CHAPTER_PROGRESS': return ['#10B981', '#059669'];
+            default: return ['#94A3B8', '#64748B'];
         }
     };
 
     const retryCount = queueItems.filter((item) => item.retryCount > 0).length;
 
+    // Background Stars (Matches Home)
+    const renderStars = () => {
+        const stars = [];
+        for (let i = 0; i < 40; i++) {
+            stars.push(
+                <View
+                    key={i}
+                    style={{
+                        position: 'absolute',
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 50,
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        width: Math.random() * 3 + 1,
+                        height: Math.random() * 3 + 1,
+                        opacity: Math.random() * 0.5 + 0.1,
+                    }}
+                />
+            );
+        }
+        return stars;
+    };
+
+    const styles = createStyles(isDark, insets);
+
     return (
         <View style={styles.container}>
+            {/* Global Background */}
             <LinearGradient
-                colors={isOffline ? ['#FF6B6B', '#FF8E53'] : ['#4CAF50', '#66BB6A', '#81C784']}
+                colors={isDark ? ['#0A1628', '#0F172A'] : ['#F0F9FF', '#E0F2FE']}
+                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.header, { paddingTop: insets.top + 16 }]}
-            >
-                <View style={[styles.decorativeCircle, { top: -40, right: -30, width: 120, height: 120 }]} />
-                <View style={[styles.decorativeCircle, { bottom: -20, left: -20, width: 80, height: 80 }]} />
-
-                <Animated.View entering={FadeIn.duration(600)} style={styles.headerContent}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <View style={styles.headerTitleContainer}>
-                        <Text variant="headlineLarge" style={styles.screenTitle}>
-                            Sync Status
-                        </Text>
-                        <Text style={styles.headerSubtitle}>
-                            {isOffline ? 'Offline Mode' : 'Connected & Synced'}
-                        </Text>
-                    </View>
-                    <View style={{ width: 48 }} />
-                </Animated.View>
-            </LinearGradient>
+            />
+            {isDark && <View style={styles.starsContainer}>{renderStars()}</View>}
 
             <ScrollView
                 contentContainerStyle={[styles.content, containerStyle]}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : theme.colors.primary} />}
                 showsVerticalScrollIndicator={false}
-                style={{ marginTop: -40, flex: 1 }}
             >
-                <Animated.View entering={FadeInDown.delay(100).duration(600)}>
-                    <LinearGradient
-                        colors={isOffline
-                            ? ['rgba(255, 107, 107, 0.95)', 'rgba(255, 142, 83, 0.85)']
-                            : ['rgba(76, 175, 80, 0.95)', 'rgba(102, 187, 106, 0.85)']
-                        }
-                        style={styles.statusCard}
-                    >
-                        <View style={styles.statusRow}>
-                            <Animated.View style={isSyncing ? animatedIconStyle : {}}>
-                                <View style={styles.statusIconContainer}>
-                                    <MaterialCommunityIcons
-                                        name={isSyncing ? 'sync' : (isOffline ? 'cloud-off-outline' : 'cloud-check-outline')}
-                                        size={48}
-                                        color="#fff"
-                                    />
-                                </View>
-                            </Animated.View>
-                            <View style={styles.statusTextContainer}>
-                                <Text variant="headlineSmall" style={styles.statusTitle}>
-                                    {isSyncing ? 'Syncing...' : (isOffline ? 'Offline Mode' : 'All Synced')}
-                                </Text>
-                                <Text variant="bodyMedium" style={styles.statusSubtitle}>
-                                    {isSyncing
-                                        ? 'Uploading your progress...'
-                                        : (isOffline ? 'Changes will sync when online' : 'Your data is up to date')}
-                                </Text>
-                            </View>
-                        </View>
-                    </LinearGradient>
-                </Animated.View>
-
-                <View style={styles.statsGrid}>
-                    <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.statCol}>
-                        <LinearGradient
-                            colors={['#667eea', '#764ba2']}
-                            style={styles.statCard}
-                        >
-                            <MaterialCommunityIcons name="clock-outline" size={32} color="#fff" />
-                            <Text style={styles.statNumber}>{queueItems.length}</Text>
-                            <Text style={styles.statLabel}>Pending Items</Text>
-                        </LinearGradient>
-                    </Animated.View>
-
-                    <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.statCol}>
-                        <LinearGradient
-                            colors={retryCount > 0 ? ['#FF9800', '#F57C00'] : ['#30cfd0', '#330867']}
-                            style={styles.statCard}
-                        >
-                            <MaterialCommunityIcons name="refresh" size={32} color="#fff" />
-                            <Text style={styles.statNumber}>{retryCount}</Text>
-                            <Text style={styles.statLabel}>Retrying</Text>
-                        </LinearGradient>
-                    </Animated.View>
-                </View>
-
-                <Animated.View entering={FadeInDown.delay(400).duration(600)} style={styles.actionButtons}>
-                    <TouchableOpacity
-                        onPress={handleManualSync}
-                        disabled={isSyncing || isOffline || queueItems.length === 0}
-                        activeOpacity={0.8}
-                    >
-                        <LinearGradient
-                            colors={isSyncing || isOffline || queueItems.length === 0
-                                ? ['#BDBDBD', '#9E9E9E']
-                                : ['#667eea', '#764ba2']
-                            }
-                            style={styles.syncButton}
-                        >
-                            {isSyncing && (
-                                <Animated.View style={animatedIconStyle}>
-                                    <MaterialCommunityIcons name="sync" size={24} color="#fff" />
-                                </Animated.View>
-                            )}
-                            {!isSyncing && <MaterialCommunityIcons name="sync" size={24} color="#fff" />}
-                            <Text style={styles.syncButtonText}>
-                                {isSyncing ? 'Syncing...' : 'Sync Now'}
-                            </Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
-
-                    {queueItems.length > 0 && (
-                        <TouchableOpacity
-                            onPress={handleClearQueue}
-                            disabled={isSyncing}
-                            activeOpacity={0.8}
-                        >
-                            <View style={styles.clearButton}>
-                                <MaterialCommunityIcons name="delete-sweep-outline" size={24} color="#FF6B6B" />
-                                <Text style={styles.clearButtonText}>Clear Queue</Text>
-                            </View>
+                {/* Premium Header */}
+                <LinearGradient
+                    colors={isOffline
+                        ? ['#991B1B', '#DC2626'] // Dark Red for Offline
+                        : isDark ? ['#0F172A', '#1E293B'] : ['#10B981', '#059669', '#047857']} // Emerald/Slate for Online
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.headerBackground}
+                >
+                    <View style={styles.headerContent}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
-                    )}
-                </Animated.View>
-
-                <View style={styles.sectionHeader}>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>Queue Items</Text>
-                    {queueItems.length > 0 && (
-                        <View style={styles.itemCount}>
-                            <Text style={styles.itemCountText}>{queueItems.length}</Text>
-                        </View>
-                    )}
-                </View>
-
-                {queueItems.length === 0 ? (
-                    <Animated.View entering={ZoomIn.delay(500)} style={styles.emptyState}>
-                        <LinearGradient
-                            colors={['#E8F5E9', '#F1F8E9']}
-                            style={styles.emptyGradient}
-                        >
-                            <MaterialCommunityIcons name="check-circle" size={80} color="#4CAF50" />
-                            <Text variant="titleMedium" style={styles.emptyText}>All caught up!</Text>
-                            <Text variant="bodyMedium" style={styles.emptySubtext}>No pending items to sync</Text>
-                        </LinearGradient>
-                    </Animated.View>
-                ) : (
-                    <View style={styles.listContainer}>
-                        {queueItems.map((item, index) => (
-                            <Animated.View
-                                key={item.id}
-                                entering={FadeInDown.delay(500 + (index * 100)).duration(500)}
-                            >
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.85)']}
-                                    style={styles.itemCard}
-                                >
-                                    <LinearGradient
-                                        colors={getTypeGradient(item.type)}
-                                        style={styles.itemIconContainer}
-                                    >
-                                        <MaterialCommunityIcons name={getTypeIcon(item.type)} size={24} color="#fff" />
-                                    </LinearGradient>
-                                    <View style={styles.itemContent}>
-                                        <Text variant="titleSmall" style={styles.itemTitle}>{getTypeLabel(item.type)}</Text>
-                                        <View style={styles.itemMeta}>
-                                            <MaterialCommunityIcons name="clock-outline" size={14} color="#999" />
-                                            <Text variant="bodySmall" style={styles.itemTime}>
-                                                {new Date(item.timestamp).toLocaleTimeString()} • {new Date(item.timestamp).toLocaleDateString()}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    {item.retryCount > 0 && (
-                                        <View style={styles.retryBadge}>
-                                            <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#FF9800" />
-                                            <Text style={styles.retryText}>Retry {item.retryCount}</Text>
-                                        </View>
-                                    )}
-                                </LinearGradient>
-                            </Animated.View>
-                        ))}
+                        <Text style={styles.headerTitle}>Sync Manager</Text>
+                        <View style={{ width: 44 }} />
                     </View>
-                )}
 
-                <View style={{ height: 40 }} />
+                    {/* Status Overview */}
+                    <View style={styles.statusOverview}>
+                        <View style={styles.statusIconWrapper}>
+                            <Animated.View style={[isSyncing && animatedIconStyle]}>
+                                <MaterialCommunityIcons
+                                    name={isSyncing ? 'loading' : (isOffline ? 'cloud-off-outline' : 'cloud-check-outline')}
+                                    size={48}
+                                    color="#fff"
+                                />
+                            </Animated.View>
+                        </View>
+                        <View style={styles.statusTextWrapper}>
+                            <Text style={styles.statusMainText}>
+                                {isSyncing ? 'Syncing...' : (isOffline ? 'Offline Mode' : 'All Synced')}
+                            </Text>
+                            <Text style={styles.statusSubText}>
+                                {isSyncing
+                                    ? 'Uploading your data...'
+                                    : (isOffline ? 'Queued items pending' : 'Your data is up to date')}
+                            </Text>
+                        </View>
+                    </View>
+                </LinearGradient>
+
+                {/* Main Body (Overlapping) */}
+                <View style={styles.mainContainer}>
+
+                    {/* Stats Grid */}
+                    <View style={styles.statsGrid}>
+                        <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.statCol}>
+                            <Surface style={styles.statCard} elevation={2}>
+                                <LinearGradient
+                                    colors={isDark ? ['#1E293B', '#334155'] : ['#fff', '#F8FAFC']}
+                                    style={styles.statGradient}
+                                >
+                                    <View style={[styles.statIconBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#EEF2FF' }]}>
+                                        <MaterialCommunityIcons name="database-clock-outline" size={24} color="#6366F1" />
+                                    </View>
+                                    <Text style={styles.statValue}>{queueItems.length}</Text>
+                                    <Text style={styles.statLabel}>Pending</Text>
+                                </LinearGradient>
+                            </Surface>
+                        </Animated.View>
+
+                        <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.statCol}>
+                            <Surface style={styles.statCard} elevation={2}>
+                                <LinearGradient
+                                    colors={isDark ? ['#1E293B', '#334155'] : ['#fff', '#F8FAFC']}
+                                    style={styles.statGradient}
+                                >
+                                    <View style={[styles.statIconBadge, { backgroundColor: retryCount > 0 ? 'rgba(245, 158, 11, 0.2)' : (isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5') }]}>
+                                        <MaterialCommunityIcons name={retryCount > 0 ? "alert-circle-outline" : "check-circle-outline"} size={24} color={retryCount > 0 ? "#F59E0B" : "#10B981"} />
+                                    </View>
+                                    <Text style={[styles.statValue, retryCount > 0 && { color: '#F59E0B' }]}>{retryCount}</Text>
+                                    <Text style={styles.statLabel}>Issues</Text>
+                                </LinearGradient>
+                            </Surface>
+                        </Animated.View>
+                    </View>
+
+                    {/* Actions */}
+                    <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.actionContainer}>
+                        <TouchableOpacity
+                            onPress={handleManualSync}
+                            disabled={isSyncing || isOffline || queueItems.length === 0}
+                            activeOpacity={0.9}
+                            style={{ flex: 1 }}
+                        >
+                            <LinearGradient
+                                colors={isSyncing || isOffline || queueItems.length === 0
+                                    ? ['#94A3B8', '#64748B']
+                                    : ['#2563EB', '#1D4ED8']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.primaryButton}
+                            >
+                                {isSyncing ? (
+                                    <Animated.View style={animatedIconStyle}>
+                                        <MaterialCommunityIcons name="loading" size={20} color="#fff" />
+                                    </Animated.View>
+                                ) : (
+                                    <MaterialCommunityIcons name="cloud-sync" size={20} color="#fff" />
+                                )}
+                                <Text style={styles.primaryButtonText}>{isSyncing ? 'Syncing...' : 'Sync Now'}</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        {queueItems.length > 0 && !isSyncing && (
+                            <TouchableOpacity
+                                onPress={handleClearQueue}
+                                style={styles.secondaryButton}
+                            >
+                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                        )}
+                    </Animated.View>
+
+                    {/* Queue List */}
+                    <View style={styles.listSection}>
+                        <Text style={styles.sectionTitle}>Sync Queue</Text>
+                        {queueItems.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <MaterialCommunityIcons name="check-all" size={64} color={isDark ? '#334155' : '#CBD5E1'} />
+                                <Text style={styles.emptyText}>Everything is up to date</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.listContainer}>
+                                {queueItems.map((item, index) => (
+                                    <Animated.View
+                                        key={item.id}
+                                        entering={FadeInDown.delay(400 + (index * 50)).duration(500)}
+                                    >
+                                        <Surface style={styles.queueItem} elevation={1}>
+                                            <View style={styles.queueIconContainer}>
+                                                <LinearGradient
+                                                    colors={getTypeGradient(item.type) as any}
+                                                    style={styles.queueIconGradient}
+                                                >
+                                                    <MaterialCommunityIcons name={getTypeIcon(item.type)} size={20} color="#fff" />
+                                                </LinearGradient>
+                                            </View>
+                                            <View style={styles.queueContent}>
+                                                <Text style={styles.queueTitle}>{getTypeLabel(item.type)}</Text>
+                                                <Text style={styles.queueTime}>
+                                                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Text>
+                                            </View>
+                                            {item.retryCount > 0 && (
+                                                <View style={styles.retryBadge}>
+                                                    <Text style={styles.retryText}>{item.retryCount} retries</Text>
+                                                </View>
+                                            )}
+                                        </Surface>
+                                    </Animated.View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                </View>
             </ScrollView>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (isDark: boolean, insets: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
     },
-    header: {
-        paddingBottom: 60,
+    starsContainer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: -1,
+    },
+    content: {
+        paddingBottom: 100,
+    },
+    headerBackground: {
+        paddingTop: insets.top + spacing.md,
+        paddingBottom: 80, // Space for overlap
         paddingHorizontal: spacing.lg,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 12,
-    },
-    decorativeCircle: {
-        position: 'absolute',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 1000,
+        borderBottomLeftRadius: 36,
+        borderBottomRightRadius: 36,
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: spacing.md,
+        marginBottom: spacing.xl,
     },
     backButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.3)',
     },
-    headerTitleContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    screenTitle: {
-        fontWeight: '900',
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: '700',
         color: '#fff',
-        fontSize: 28,
-        letterSpacing: 0.5,
-        textAlign: 'center',
-        textShadowColor: 'rgba(0,0,0,0.2)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
     },
-    headerSubtitle: {
-        color: 'rgba(255,255,255,0.9)',
-        fontSize: 14,
-        marginTop: 2,
-        fontWeight: '500',
-    },
-    content: {
-        padding: spacing.lg,
-        paddingBottom: 100,
-    },
-    statusCard: {
-        borderRadius: 24,
-        padding: spacing.xl,
-        marginBottom: spacing.xl,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
-    },
-    statusRow: {
+    statusOverview: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: spacing.lg,
+        marginBottom: spacing.md,
     },
-    statusIconContainer: {
+    statusIconWrapper: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255,255,255,0.15)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
     },
-    statusTextContainer: {
+    statusTextWrapper: {
         flex: 1,
     },
-    statusTitle: {
+    statusMainText: {
+        fontSize: 26,
+        fontWeight: '800',
         color: '#fff',
-        fontWeight: '900',
         marginBottom: 4,
-        fontSize: 24,
     },
-    statusSubtitle: {
-        color: 'rgba(255,255,255,0.95)',
+    statusSubText: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 14,
         fontWeight: '500',
+    },
+    mainContainer: {
+        marginTop: -50,
+        paddingHorizontal: spacing.lg,
     },
     statsGrid: {
         flexDirection: 'row',
         gap: spacing.md,
-        marginBottom: spacing.xl,
+        marginBottom: spacing.lg,
     },
     statCol: {
         flex: 1,
     },
     statCard: {
-        padding: spacing.lg,
         borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 140,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 6,
+        overflow: 'hidden',
+        backgroundColor: isDark ? '#1E293B' : '#fff',
     },
-    statNumber: {
-        fontSize: 40,
-        fontWeight: '900',
-        color: '#fff',
-        marginVertical: spacing.sm,
+    statGradient: {
+        padding: spacing.lg,
+        alignItems: 'center',
+    },
+    statIconBadge: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: isDark ? '#F1F5F9' : '#1E293B',
     },
     statLabel: {
-        color: 'rgba(255,255,255,0.95)',
-        fontSize: 13,
+        fontSize: 12,
+        color: isDark ? '#94A3B8' : '#64748B',
         fontWeight: '600',
-        textAlign: 'center',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
-    actionButtons: {
+    actionContainer: {
+        flexDirection: 'row',
         gap: spacing.md,
         marginBottom: spacing.xl,
     },
-    syncButton: {
+    primaryButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: spacing.lg,
+        paddingVertical: 16,
         borderRadius: 16,
-        gap: spacing.sm,
-        shadowColor: '#667eea',
+        gap: 8,
+        elevation: 4,
+        shadowColor: '#2563EB',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 6,
+        shadowRadius: 8,
     },
-    syncButtonText: {
+    primaryButtonText: {
         color: '#fff',
-        fontSize: 16,
         fontWeight: '700',
+        fontSize: 16,
     },
-    clearButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    secondaryButton: {
+        width: 56,
         justifyContent: 'center',
-        paddingVertical: spacing.lg,
-        borderRadius: 16,
-        gap: spacing.sm,
-        backgroundColor: '#fff',
-        borderWidth: 2,
-        borderColor: '#FFE0E0',
-    },
-    clearButtonText: {
-        color: '#FF6B6B',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.md,
-        gap: spacing.sm,
+        borderRadius: 16,
+        backgroundColor: isDark ? '#1E293B' : '#fff',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+    },
+    listSection: {
+        marginBottom: spacing.xl,
     },
     sectionTitle: {
-        fontWeight: '800',
-        color: '#1A1A1A',
-        fontSize: 22,
-    },
-    itemCount: {
-        backgroundColor: '#667eea',
-        borderRadius: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    itemCountText: {
-        color: '#fff',
-        fontSize: 14,
+        fontSize: 18,
         fontWeight: '700',
+        color: isDark ? '#F1F5F9' : '#1E293B',
+        marginBottom: spacing.md,
+        marginLeft: 4,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: spacing.xl,
+        borderWidth: 2,
+        borderColor: isDark ? '#334155' : '#E2E8F0',
+        borderStyle: 'dashed',
+        borderRadius: 20,
+    },
+    emptyText: {
+        color: isDark ? '#94A3B8' : '#94A3B8',
+        marginTop: spacing.md,
+        fontWeight: '500',
     },
     listContainer: {
         gap: spacing.md,
     },
-    itemCard: {
+    queueItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing.lg,
-        borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
+        padding: spacing.md,
+        borderRadius: 16,
+        backgroundColor: isDark ? '#1E293B' : '#fff',
     },
-    itemIconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+    queueIconContainer: {
+        marginRight: spacing.md,
+    },
+    queueIconGradient: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing.md,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
     },
-    itemContent: {
+    queueContent: {
         flex: 1,
     },
-    itemTitle: {
-        fontWeight: '700',
-        color: '#1A1A1A',
+    queueTitle: {
         fontSize: 16,
-        marginBottom: 4,
+        fontWeight: '700',
+        color: isDark ? '#F1F5F9' : '#1E293B',
+        marginBottom: 2,
     },
-    itemMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    itemTime: {
-        color: '#999',
+    queueTime: {
         fontSize: 12,
+        color: isDark ? '#94A3B8' : '#64748B',
     },
     retryBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#FFF3E0',
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 6,
-        borderRadius: 12,
+        backgroundColor: 'rgba(245, 158, 11, 0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
     retryText: {
-        color: '#FF9800',
+        color: '#F59E0B',
         fontSize: 11,
         fontWeight: '700',
-    },
-    emptyState: {
-        borderRadius: 24,
-        overflow: 'hidden',
-        shadowColor: '#4CAF50',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    emptyGradient: {
-        alignItems: 'center',
-        padding: spacing.xxl * 2,
-    },
-    emptyText: {
-        color: '#4CAF50',
-        marginTop: spacing.lg,
-        fontWeight: '800',
-        fontSize: 20,
-    },
-    emptySubtext: {
-        color: '#81C784',
-        marginTop: spacing.sm,
-        fontSize: 15,
-        fontWeight: '500',
     },
 });
 

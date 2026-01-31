@@ -199,7 +199,10 @@ const submitQuizResult = async (req, res) => {
 // @access  Private/Student
 const getClassroomContent = async (req, res) => {
     try {
-        const student = await User.findById(req.user._id).populate('instituteId', 'name');
+        const student = await User.findById(req.user._id)
+            .populate('instituteId', 'name')
+            .populate('teacherId', 'name avatar');
+
         if (!student || !student.selectedClass) {
             return res.status(400).json({ message: 'Student class not found' });
         }
@@ -235,6 +238,19 @@ const getClassroomContent = async (req, res) => {
 
         chapters.forEach(processTeacher);
         quizzes.forEach(processTeacher);
+
+        // ALWAYS Add assigned teacher if they exist, even if they have no content for this class
+        if (student.teacherId) {
+            const tid = student.teacherId._id.toString();
+            if (!uniqueTeacherMap.has(tid)) {
+                uniqueTeacherMap.set(tid, {
+                    id: tid,
+                    name: student.teacherId.name,
+                    subject: 'Class Teacher',
+                    avatar: student.teacherId.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.teacherId.name)}&background=random`
+                });
+            }
+        }
 
         const teachers = Array.from(uniqueTeacherMap.values());
 

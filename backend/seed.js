@@ -7,6 +7,8 @@ const seedContent = require('./seed/content');
 const seedStatic = require('./seed/static');
 const seedBasicStudents = require('./seed/students-basic');
 const seedDemoStudents = require('./seed/students-demo');
+const seedClasses = require('./seed/classes');
+const restoreUser = require('./seed/restore-user');
 
 // Handle arguments
 const args = process.argv.slice(2);
@@ -28,6 +30,7 @@ const runSeed = async () => {
 
     try {
         await seedAdmin();
+        await seedClasses(); // Ensure classes 6-12 exist
         await seedStatic();
         await seedContent();
 
@@ -39,6 +42,7 @@ const runSeed = async () => {
 
         await seedBasicStudents();
         await seedDemoStudents();
+        await restoreUser();
 
         console.log('\n🎉 ALL SEEDING COMPLETED SUCCESSFULLY!\n');
     } catch (error) {
