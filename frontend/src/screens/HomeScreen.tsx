@@ -165,7 +165,7 @@ const HomeScreen = ({ navigation }: any) => {
 
         // Row 4: System
         { id: 'feedback', label: 'Feedback', icon: 'comment-text-outline', gradient: ['#94A3B8', '#64748B'], route: 'StudentFeedback', colSpan: 6, height: 100 },
-        { id: 'sync', label: 'Sync Data', icon: 'cloud-sync', gradient: ['#334155', '#1E293B'], route: 'Sync', colSpan: 6, height: 100 },
+        { id: 'notebook', label: 'AI Notebook', icon: 'notebook', gradient: ['#8B5CF6', '#6D28D9'], route: 'Notebook', colSpan: 6, height: 100 },
 
         // Row 5: Science Interactive (Moved to end, narrower)
         {

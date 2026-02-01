@@ -45,7 +45,11 @@ app.use('/api/student', require('./routes/studentRoutes'));
 app.use('/api/videos', require('./routes/videoRoutes'));
 app.use('/api/wellbeing', require('./routes/wellbeingRoutes'));
 app.use('/api/feedback', require('./routes/feedbackRoutes'));
+<<<<<<< Updated upstream
 app.use('/api/live-classes', require('./routes/liveClassRoutes'));
+=======
+app.use('/api/notebook', require('./routes/notebookRoutes'));
+>>>>>>> Stashed changes
 
 // Health check route
 app.get('/api/health', (req, res) => {

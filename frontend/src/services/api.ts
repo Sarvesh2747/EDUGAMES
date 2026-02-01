@@ -16,7 +16,7 @@ import Constants from 'expo-constants';
 const getDefaultApiUrl = () => {
     // For Web/Emulator: use localhost if explicitly running there
     if (Platform.OS === 'web') {
-        return 'http://localhost:5000/api';
+        return 'http://127.0.0.1:5000/api';
     }
 
     // Dynamic IP detection for development (Expo Go / Dev Client)
@@ -31,7 +31,7 @@ const getDefaultApiUrl = () => {
     }
 
     // Fallback or explicit override
-    return 'http://localhost:5000/api';
+    return 'http://192.168.1.7:5000/api'; // Fallback to last known IP for this session
 };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || getDefaultApiUrl();
