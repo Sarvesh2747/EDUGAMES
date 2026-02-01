@@ -45,6 +45,7 @@ app.use('/api/student', require('./routes/studentRoutes'));
 app.use('/api/videos', require('./routes/videoRoutes'));
 app.use('/api/wellbeing', require('./routes/wellbeingRoutes'));
 app.use('/api/feedback', require('./routes/feedbackRoutes'));
+app.use('/api/live-classes', require('./routes/liveClassRoutes'));
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -61,7 +62,20 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
+// Initialize Server & Socket.io
+const server = require('http').createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+// Attach Socket Handler
+require('./socket/socketHandler')(io);
+
+server.listen(PORT, '0.0.0.0', () => {
     console.log('\n\x1b[35m╔════════════════════════════════════════════════════════════╗\x1b[0m');
     console.log('\x1b[35m║\x1b[0m                                                            \x1b[35m║\x1b[0m');
     console.log('\x1b[35m║\x1b[0m  \x1b[1m\x1b[36m🚀  CoreTechLabs Backend Server\x1b[0m                        \x1b[35m║\x1b[0m');

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { theme, gradients, spacing, borderRadius } from '../theme';
 import { useTranslation } from '../i18n';
-import { fetchClassroomContent, ClassroomItem } from '../services/studentService';
+import { fetchClassroomContent, ClassroomItem, fetchStudentLiveClasses, LiveClassItem } from '../services/studentService';
 import { Surface, Button, IconButton, useTheme, Dialog, Portal, Paragraph } from 'react-native-paper';
 import ScreenBackground from '../components/ScreenBackground';
 
@@ -16,7 +16,7 @@ const ClassroomScreen = () => {
     const route = useRoute<any>(); // Add useRoute
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
-    const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people'>('stream');
+    const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people' | 'meets'>('stream');
     const [classroomContent, setClassroomContent] = useState<ClassroomItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedChapter, setSelectedChapter] = useState<ClassroomItem | null>(null);
@@ -27,6 +27,10 @@ const ClassroomScreen = () => {
         teachers: [] as any[]
     });
 
+    // Live Classes State
+    const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
+    const [loadingLive, setLoadingLive] = useState(false);
+
     React.useEffect(() => {
         loadContent();
     }, [route.params?.subject]); // Reload if subject changes
@@ -35,13 +39,30 @@ const ClassroomScreen = () => {
         try {
             setLoading(true);
             const subject = route.params?.subject;
+
+            // Fetch Classroom Content
             const data = await fetchClassroomContent(subject);
             setClassroomContent(data.content);
             setMeta(data.meta);
+
+            // Fetch Live Classes
+            fetchLiveClasses(subject);
         } catch (error) {
             console.error('Failed to load classroom content', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchLiveClasses = async (subject?: string) => {
+        try {
+            setLoadingLive(true);
+            const data = await fetchStudentLiveClasses(subject);
+            setLiveClasses(data);
+        } catch (error) {
+            console.error('Failed to load live classes', error);
+        } finally {
+            setLoadingLive(false);
         }
     };
 
@@ -60,10 +81,14 @@ const ClassroomScreen = () => {
         }
     };
 
-    const liveClasses = [
-        { id: 1, subject: 'Math', topic: 'Quadratic Equations', time: '10:00 AM', status: 'live' },
-        { id: 2, subject: 'Physics', topic: 'Laws of Motion', time: '02:00 PM', status: 'upcoming' },
-    ];
+    const handleJoinLiveClass = (item: LiveClassItem) => {
+        navigation.navigate('LiveClassRoom', {
+            roomId: item.roomId,
+            topic: item.topic,
+            duration: item.duration,
+            isStudent: true // Flag to hide teacher controls if needed
+        });
+    };
 
     const renderStreamTab = () => (
         <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -99,7 +124,7 @@ const ClassroomScreen = () => {
                         <MaterialCommunityIcons name="video-wireless" size={24} color="#d93025" />
                         <Text style={styles.liveTitle}>Live Class Now</Text>
                     </View>
-                    <Text style={styles.liveBody}>{liveClasses.find(c => c.status === 'live')?.subject}: {liveClasses.find(c => c.status === 'live')?.topic}</Text>
+                    <Text style={styles.liveBody}>Topic: {liveClasses.find(c => c.status === 'live')?.topic}</Text>
                     <TouchableOpacity style={styles.joinBtn}>
                         <Text style={styles.joinBtnText}>JOIN</Text>
                     </TouchableOpacity>
@@ -138,6 +163,54 @@ const ClassroomScreen = () => {
                                 </TouchableOpacity>
                             </Surface>
                         </Animated.View>
+                    ))
+                )}
+            </View>
+        </ScrollView>
+    );
+
+    const renderMeetsTab = () => (
+        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.topicSection}>
+                <Text style={[styles.topicTitle, { color: '#d93025', fontSize: 24, marginBottom: 16 }]}>Live Classes</Text>
+                <View style={[styles.topicDivider, { backgroundColor: '#d93025' }]} />
+
+                {loadingLive ? (
+                    <ActivityIndicator size="large" color="#d93025" style={{ marginTop: 20 }} />
+                ) : liveClasses.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <MaterialCommunityIcons name="video-off" size={64} color="#dadce0" />
+                        <Text style={[styles.emptyText, { marginTop: 16 }]}>No scheduled live classes</Text>
+                    </View>
+                ) : (
+                    liveClasses.map((item) => (
+                        <Surface key={item._id} style={[styles.liveStreamCard, { borderColor: item.status === 'live' ? '#d93025' : '#1967d2', borderLeftWidth: 4 }]} elevation={2}>
+                            <View style={styles.liveHeader}>
+                                <MaterialCommunityIcons
+                                    name={item.status === 'live' ? "video-wireless" : "calendar-clock"}
+                                    size={24}
+                                    color={item.status === 'live' ? "#d93025" : "#1967d2"}
+                                />
+                                <Text style={[styles.liveTitle, { color: item.status === 'live' ? '#d93025' : '#1967d2' }]}>
+                                    {item.status === 'live' ? 'LIVE NOW' : 'Scheduled'}
+                                </Text>
+                            </View>
+
+                            <Text style={[styles.liveBody, { fontSize: 18, fontWeight: 'bold', marginBottom: 4 }]}>{item.topic}</Text>
+                            <Text style={[styles.contentMeta, { marginBottom: 16 }]}>
+                                {new Date(item.startAt).toLocaleDateString()} at {new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {item.duration} mins
+                            </Text>
+
+                            <TouchableOpacity
+                                style={[styles.joinBtn, { backgroundColor: item.status === 'live' ? '#d93025' : '#1967d2', opacity: item.status === 'completed' ? 0.5 : 1 }]}
+                                onPress={() => handleJoinLiveClass(item)}
+                                disabled={item.status === 'completed'}
+                            >
+                                <Text style={styles.joinBtnText}>
+                                    {item.status === 'live' ? 'JOIN NOW' : (item.status === 'completed' ? 'COMPLETED' : 'JOIN')}
+                                </Text>
+                            </TouchableOpacity>
+                        </Surface>
                     ))
                 )}
             </View>
@@ -282,6 +355,13 @@ const ClassroomScreen = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                        style={[styles.tabItem, activeTab === 'meets' && styles.tabItemActive]}
+                        onPress={() => setActiveTab('meets')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'meets' && styles.tabTextActive]}>Meets</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         style={[styles.tabItem, activeTab === 'classwork' && styles.tabItemActive]}
                         onPress={() => setActiveTab('classwork')}
                     >
@@ -300,6 +380,7 @@ const ClassroomScreen = () => {
                 <View style={styles.contentArea}>
                     <View style={styles.centeredContent}>
                         {activeTab === 'stream' && renderStreamTab()}
+                        {activeTab === 'meets' && renderMeetsTab()}
                         {activeTab === 'classwork' && renderClassworkTab()}
                         {activeTab === 'people' && renderPeopleTab()}
                     </View>

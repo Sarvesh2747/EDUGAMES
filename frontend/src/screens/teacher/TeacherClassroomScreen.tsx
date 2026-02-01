@@ -5,20 +5,45 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext'; // Added
 import ScreenBackground from '../../components/ScreenBackground';
 import { useAppTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { fetchClassroom, addStudentToClassroom, removeStudentFromClassroom } from '../../services/teacherService';
+import { format } from 'date-fns';
+import CustomDateTimePicker from '../../components/CustomDateTimePicker';
 
 const TeacherClassroomScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
     const { isDark } = useAppTheme();
+    const { user } = useAuth(); // Added
     const { params } = useRoute<any>();
     const classroom = params?.classroom;
 
     // State
-    const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people'>('stream');
+    const [liveClasses, setLiveClasses] = useState<any[]>([]);
+
+    // Scheduling Form State
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [scheduleForm, setScheduleForm] = useState({
+        topic: '',
+        date: new Date(),
+        startTime: new Date(),
+        duration: '60'
+    });
+    const [scheduling, setScheduling] = useState(false);
+
+    // Date/Time Display helpers
+    const [dateText, setDateText] = useState(new Date().toISOString().split('T')[0]);
+    const [timeText, setTimeText] = useState('10:00');
+
+    // Picker State
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+
+    // Tabs & Content State (Restored)
+    const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people' | 'live'>('stream');
     const [content, setContent] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -35,14 +60,184 @@ const TeacherClassroomScreen = () => {
     const [itemToDelete, setItemToDelete] = useState<any>(null);
     const [announcement, setAnnouncement] = useState('');
 
+
+
+
+    // ... (render methods)
+
+    // Schedule Live Class Modal (redesigned)
+    const renderScheduleModal = () => (
+        <Modal visible={showScheduleModal} transparent animationType="slide" onRequestClose={() => setShowScheduleModal(false)}>
+            <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' }]}>
+                    <Text style={[styles.modalTitle, { color: isDark ? '#FFF' : '#202124' }]}>Schedule Live Class</Text>
+
+                    {/* Topic Input - Premium Style */}
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Topic</Text>
+                        <TextInput
+                            mode="outlined"
+                            value={scheduleForm.topic}
+                            onChangeText={(text) => setScheduleForm({ ...scheduleForm, topic: text })}
+                            style={styles.premiumInput}
+                            outlineColor={isDark ? '#4A5568' : '#DADCE0'}
+                            activeOutlineColor="#1967D2"
+                            textColor={isDark ? '#FFF' : '#000'}
+                            theme={{ colors: { onSurfaceVariant: isDark ? '#A0AEC0' : '#5f6368' } }}
+                        />
+                    </View>
+
+                    <View style={styles.row}>
+                        {/* Date Picker Trigger */}
+                        <TouchableOpacity
+                            style={[styles.pickerButton, { borderColor: isDark ? '#4A5568' : '#DADCE0' }]}
+                            onPress={() => setShowDatePicker(true)}
+                        >
+                            <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Date</Text>
+                            <View style={styles.pickerContent}>
+                                <MaterialCommunityIcons name="calendar-month-outline" size={20} color={isDark ? '#FFF' : '#5f6368'} />
+                                <Text style={[styles.pickerText, { color: isDark ? '#FFF' : '#202124' }]}>
+                                    {format(scheduleForm.date, 'MMM d, yyyy')}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Time Picker Trigger */}
+                        <TouchableOpacity
+                            style={[styles.pickerButton, { borderColor: isDark ? '#4A5568' : '#DADCE0' }]}
+                            onPress={() => setShowTimePicker(true)}
+                        >
+                            <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Time</Text>
+                            <View style={styles.pickerContent}>
+                                <MaterialCommunityIcons name="clock-outline" size={20} color={isDark ? '#FFF' : '#5f6368'} />
+                                <Text style={[styles.pickerText, { color: isDark ? '#FFF' : '#202124' }]}>
+                                    {format(scheduleForm.startTime, 'h:mm a')}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Duration Input */}
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Duration (minutes)</Text>
+                        <TextInput
+                            mode="outlined"
+                            value={scheduleForm.duration}
+                            onChangeText={(text) => setScheduleForm({ ...scheduleForm, duration: text })}
+                            keyboardType="numeric"
+                            style={styles.premiumInput}
+                            outlineColor={isDark ? '#4A5568' : '#DADCE0'}
+                            activeOutlineColor="#1967D2"
+                            textColor={isDark ? '#FFF' : '#000'}
+                            theme={{ colors: { onSurfaceVariant: isDark ? '#A0AEC0' : '#5f6368' } }}
+                        />
+                    </View>
+
+                    <View style={styles.modalButtons}>
+                        <Button mode="text" onPress={() => setShowScheduleModal(false)} textColor={isDark ? '#A0AEC0' : '#5f6368'}>
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={handleScheduleClass}
+                            loading={scheduling}
+                            buttonColor="#D93025"
+                            style={styles.scheduleButton}
+                        >
+                            Schedule
+                        </Button>
+                    </View>
+                </View>
+            </View>
+
+            {/* Custom Pickers */}
+            <CustomDateTimePicker
+                visible={showDatePicker}
+                mode="date"
+                initialDate={scheduleForm.date}
+                onClose={() => setShowDatePicker(false)}
+                onSelect={(date) => {
+                    setScheduleForm({ ...scheduleForm, date: date });
+                    setShowDatePicker(false);
+                }}
+            />
+
+            <CustomDateTimePicker
+                visible={showTimePicker}
+                mode="time"
+                initialDate={scheduleForm.startTime}
+                onClose={() => setShowTimePicker(false)}
+                onSelect={(date) => {
+                    setScheduleForm({ ...scheduleForm, startTime: date });
+                    setShowTimePicker(false);
+                }}
+            />
+        </Modal>
+    );
+
+
+
+
+
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = async () => {
         setLoading(true);
-        await Promise.all([fetchContent(), loadClassroomDetails()]);
+        await Promise.all([fetchContent(), loadClassroomDetails(), fetchLiveClasses()]);
         setLoading(false);
+    };
+
+    const fetchLiveClasses = async () => {
+        if (!classroom?._id) return;
+        try {
+            const response = await api.get(`/live-classes/classroom/${classroom._id}`);
+            setLiveClasses(response.data);
+        } catch (error) {
+            console.error('Failed to fetch live classes', error);
+        }
+    };
+
+    const handleScheduleClass = async () => {
+        if (!scheduleForm.topic || !scheduleForm.duration) {
+            Alert.alert('Error', 'Please fill all fields');
+            return;
+        }
+
+        setScheduling(true);
+        try {
+            const finalDate = new Date(scheduleForm.date);
+            finalDate.setHours(scheduleForm.startTime.getHours());
+            finalDate.setMinutes(scheduleForm.startTime.getMinutes());
+
+            if (isNaN(finalDate.getTime())) {
+                throw new Error('Invalid Date/Time format');
+            }
+
+            const payload = {
+                classId: classroom.classId || classroom._id,
+                subject: classroom.subjectId || classroom.subject,
+                topic: scheduleForm.topic,
+                startAt: finalDate,
+                duration: parseInt(scheduleForm.duration)
+            };
+
+            await api.post('/live-classes/schedule', payload);
+            Alert.alert('Success', 'Live Class Scheduled!');
+            setShowScheduleModal(false);
+            setScheduleForm({
+                topic: '',
+                date: new Date(),
+                startTime: new Date(),
+                duration: '60'
+            });
+            fetchLiveClasses();
+        } catch (error: any) {
+            Alert.alert('Error', error?.response?.data?.message || 'Failed to schedule class');
+        } finally {
+            setScheduling(false);
+        }
     };
 
     const loadClassroomDetails = async () => {
@@ -203,28 +398,29 @@ const TeacherClassroomScreen = () => {
                 style={[styles.tab, activeTab === 'stream' && styles.activeTab]}
                 onPress={() => setActiveTab('stream')}
             >
-                <Text style={[styles.tabText, activeTab === 'stream' && styles.activeTabText]}>
-                    STREAM
-                </Text>
+                <Text style={[styles.tabText, activeTab === 'stream' && styles.activeTabText]}>STREAM</Text>
                 {activeTab === 'stream' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
             <TouchableOpacity
                 style={[styles.tab, activeTab === 'classwork' && styles.activeTab]}
                 onPress={() => setActiveTab('classwork')}
             >
-                <Text style={[styles.tabText, activeTab === 'classwork' && styles.activeTabText]}>
-                    CLASSWORK
-                </Text>
+                <Text style={[styles.tabText, activeTab === 'classwork' && styles.activeTabText]}>CLASSWORK</Text>
                 {activeTab === 'classwork' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
             <TouchableOpacity
                 style={[styles.tab, activeTab === 'people' && styles.activeTab]}
                 onPress={() => setActiveTab('people')}
             >
-                <Text style={[styles.tabText, activeTab === 'people' && styles.activeTabText]}>
-                    PEOPLE
-                </Text>
+                <Text style={[styles.tabText, activeTab === 'people' && styles.activeTabText]}>PEOPLE</Text>
                 {activeTab === 'people' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={[styles.tab, activeTab === 'live' && styles.activeTab]}
+                onPress={() => setActiveTab('live')}
+            >
+                <Text style={[styles.tabText, activeTab === 'live' && styles.activeTabText]}>LIVE</Text>
+                {activeTab === 'live' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
         </View>
     );
@@ -384,6 +580,62 @@ const TeacherClassroomScreen = () => {
         </ScrollView>
     );
 
+    const renderLiveTab = () => (
+        <ScrollView style={styles.tabContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}>
+            {liveClasses.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <MaterialCommunityIcons name="video-wireless-outline" size={64} color="#DADCE0" />
+                    <Text style={styles.emptyText}>No live classes scheduled</Text>
+                    <Button mode="contained" onPress={() => setShowScheduleModal(true)} style={{ marginTop: 16 }} buttonColor="#D93025">
+                        Schedule Live Class
+                    </Button>
+                </View>
+            ) : (
+                <View style={styles.contentList}>
+                    <Button mode="contained" onPress={() => setShowScheduleModal(true)} style={{ marginBottom: 16 }} buttonColor="#D93025">
+                        Schedule New Class
+                    </Button>
+                    {liveClasses.map((item) => (
+                        <TouchableOpacity
+                            key={item._id}
+                            style={[styles.contentCard, { borderLeftWidth: 4, borderLeftColor: item.status === 'live' ? '#D93025' : '#1967D2' }]}
+                            onPress={() => navigation.navigate('LiveClassRoom', {
+                                roomId: item.roomId,
+                                topic: item.topic,
+                                duration: item.duration,
+                                teacherId: user?._id
+                            })}
+                        >
+                            <View style={[styles.contentIcon, { backgroundColor: item.status === 'live' ? '#FCE8E6' : '#E8F0FE' }]}>
+                                <MaterialCommunityIcons
+                                    name={item.status === 'live' ? "video-wireless" : "calendar-clock"}
+                                    size={24}
+                                    color={item.status === 'live' ? "#D93025" : "#1967D2"}
+                                />
+                            </View>
+                            <View style={styles.contentInfo}>
+                                <Text style={styles.contentTitle}>{item.topic}</Text>
+                                <Text style={styles.contentMeta}>
+                                    {new Date(item.startAt).toLocaleDateString()} at {new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                                <Text style={[styles.contentMeta, { color: item.status === 'live' ? '#D93025' : '#5f6368', fontWeight: item.status === 'live' ? 'bold' : 'normal' }]}>
+                                    Status: {item.status.toUpperCase()} • {item.duration} mins
+                                </Text>
+                            </View>
+                            <View style={styles.contentActions}>
+                                {item.status === 'live' && (
+                                    <Button mode="contained" compact buttonColor="#D93025" onPress={() => console.log('Join/Host')}>
+                                        HOST
+                                    </Button>
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+        </ScrollView>
+    );
+
     if (!classroom) {
         return (
             <View style={styles.errorContainer}>
@@ -401,9 +653,11 @@ const TeacherClassroomScreen = () => {
             {activeTab === 'stream' && renderStreamTab()}
             {activeTab === 'classwork' && renderClassworkTab()}
             {activeTab === 'people' && renderPeopleTab()}
+            {activeTab === 'live' && renderLiveTab()}
 
             {/* Create Content Modal */}
             <Modal visible={showCreateModal} transparent animationType="fade" onRequestClose={() => setShowCreateModal(false)}>
+                {/* ... existing content ... */}
                 <Pressable style={styles.modalOverlay} onPress={() => setShowCreateModal(false)}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Create Content</Text>
@@ -420,8 +674,12 @@ const TeacherClassroomScreen = () => {
                 </Pressable>
             </Modal>
 
+            {/* Schedule Live Class Modal */}
+            {renderScheduleModal()}
+
             {/* Add Student Modal */}
             <Modal visible={showAddStudentModal} transparent animationType="slide" onRequestClose={() => setShowAddStudentModal(false)}>
+                {/* ... existing content ... */}
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Add Student</Text>
@@ -446,6 +704,7 @@ const TeacherClassroomScreen = () => {
 
             {/* Delete Dialog */}
             <Portal>
+                {/* ... existing content ... */}
                 <Dialog visible={showDeleteDialog} onDismiss={() => setShowDeleteDialog(false)}>
                     <Dialog.Title>Delete Content</Dialog.Title>
                     <Dialog.Content>
@@ -799,6 +1058,46 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: 8,
+    },
+    // Missing Styles
+    inputGroup: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 12,
+        marginBottom: 4,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    premiumInput: {
+        backgroundColor: 'transparent',
+        fontSize: 16,
+    },
+    row: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    pickerButton: {
+        flex: 1,
+        borderWidth: 1,
+        borderRadius: 4,
+        padding: 12,
+        justifyContent: 'center',
+    },
+    pickerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+        gap: 8,
+    },
+    pickerText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    scheduleButton: {
+        paddingHorizontal: 20,
     },
 });
 

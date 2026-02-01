@@ -29,7 +29,14 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Camera permission is required for video calls",
+          "microphonePermission": "Microphone permission is required for video calls"
+        }
+      ]
     ],
     "extra": {
       "eas": {

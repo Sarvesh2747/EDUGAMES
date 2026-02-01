@@ -204,50 +204,76 @@ const getClassroomsList = async (req, res) => {
             return res.status(400).json({ message: 'Student class not found' });
         }
 
-        const classNumber = String(student.selectedClass);
+        const classNumber = student.selectedClass; // Keep as number logic primarily
+        const classNumberStr = String(classNumber);
+
         const TeacherChapter = require('../models/TeacherChapter');
         const TeacherQuiz = require('../models/TeacherQuiz');
-
-        // Find all unique subjects/teachers for this class
-        const chapters = await TeacherChapter.find({ classNumber }).populate('teacherId', 'name avatar');
-        const quizzes = await TeacherQuiz.find({ classNumber }).populate('teacherId', 'name avatar');
+        const Classroom = require('../models/Classroom');
 
         const classroomMap = new Map();
 
-        // 1. Fetch explicitly joined classrooms
-        const Classroom = require('../models/Classroom');
-        const joinedClassrooms = await Classroom.find({ students: req.user._id });
+        // 1. Fetch REAL Classrooms for this Class Number
+        // Matches if explicitly joined OR if it matches classNumber
+        const realClassrooms = await Classroom.find({
+            $or: [
+                { students: req.user._id },
+                { classNumber: classNumber }
+            ]
+        });
 
-        joinedClassrooms.forEach(c => {
-            classroomMap.set(c._id.toString(), {
+        // Add Real Classrooms first (Priority)
+        realClassrooms.forEach(c => {
+            classroomMap.set(c.subject, { // Key by Subject to merge content
                 id: c._id,
-                startColor: c.gradient ? c.gradient[0] : '#6366F1', // Use actual gradient
+                // If we have multiple classrooms for same subject, this might overwrite. 
+                // But usually 1 per subject per class.
+                startColor: c.gradient ? c.gradient[0] : '#6366F1',
                 gradient: c.gradient,
                 subject: c.subject,
                 className: c.title || `Class ${c.classNumber}`,
-                teacher: 'Class Teacher', // could populate teacherId
+                teacher: 'Class Teacher', // could populate teacherId if needed
                 teacherAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.subject)}&background=random`,
-                itemCount: 0, // dynamic?
+                itemCount: 0,
                 isJoined: true,
-                code: c.code
+                code: c.code,
+                isRealClassroom: true
             });
         });
 
+        // 2. Find content to bolster the list (or add missing subjects)
+        const chapters = await TeacherChapter.find({ classNumber: classNumberStr }).populate('teacherId', 'name avatar');
+        const quizzes = await TeacherQuiz.find({ classNumber: classNumberStr }).populate('teacherId', 'name avatar');
+
         const processItem = (item) => {
-            const key = item.subject; // Grouping by Subject primarily
+            const key = item.subject;
+
+            // If this subject isn't in the map (no real classroom), create a virtual one?
+            // User requested "reflect real classroom created by teacher not dummy".
+            // So MAYBE we should ONLY show if real classroom exists? 
+            // BUT if there is content but no classroom, the student needs to see it.
+            // Let's keep virtual but mark them or ensure they don't override real ones.
+
             if (!classroomMap.has(key)) {
                 classroomMap.set(key, {
-                    id: key, // Subject as ID effectively
-                    startColor: Math.floor(Math.random() * 16777215).toString(16), // Mock gradient/color
+                    id: key, // Subject as ID
+                    startColor: Math.floor(Math.random() * 16777215).toString(16),
                     subject: item.subject,
                     className: `Class ${classNumber}`,
                     teacher: item.teacherId ? item.teacherId.name : 'Class Teacher',
                     teacherAvatar: item.teacherId?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.subject)}&background=random`,
-                    itemCount: 0
+                    itemCount: 0,
+                    isRealClassroom: false
                 });
             }
             const room = classroomMap.get(key);
             room.itemCount++;
+
+            // If the room was created from real classroom, maybe update teacher info from content?
+            if (room.isRealClassroom && item.teacherId && room.teacher === 'Class Teacher') {
+                room.teacher = item.teacherId.name;
+                room.teacherAvatar = item.teacherId.avatar;
+            }
         };
 
         chapters.forEach(processItem);
@@ -414,11 +440,81 @@ const joinClassroom = async (req, res) => {
     }
 };
 
+// @desc    Get live classes for student
+// @route   GET /api/student/live-classes
+// @access  Private/Student
+const getStudentLiveClasses = async (req, res) => {
+    try {
+        console.log('DEBUG: getStudentLiveClasses called');
+        const student = await User.findById(req.user._id);
+        const { subject } = req.query;
+
+        console.log('DEBUG: Student:', student.name, 'SelectedClass:', student.selectedClass);
+        console.log('DEBUG: Query Params - Subject:', subject);
+
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        const classNumber = student.selectedClass;
+        const Classroom = require('../models/Classroom');
+        const LiveClass = require('../models/LiveClass');
+
+        // Build query to find relevant classrooms
+        const classroomQuery = {};
+
+        // Match subject if provided
+        if (subject) {
+            const escapedSubject = subject.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Case insensitive partial match
+            classroomQuery.subject = { $regex: new RegExp(escapedSubject, 'i') };
+        }
+
+        // Match either joined explicitly OR matching classNumber
+        const orConditions = [{ students: req.user._id }];
+        if (classNumber) {
+            orConditions.push({ classNumber: classNumber });
+        }
+        classroomQuery.$or = orConditions;
+
+        console.log('DEBUG: Classroom Query:', JSON.stringify(classroomQuery));
+
+        const classrooms = await Classroom.find(classroomQuery).select('_id title subject classNumber');
+        const classIds = classrooms.map(c => c._id);
+
+        console.log('DEBUG: Found Classrooms:', classrooms.length, 'IDs:', classIds);
+        classrooms.forEach(c => console.log(`   - ${c.title} (${c.subject}) [${c.classNumber}]`));
+
+        if (classIds.length === 0) {
+            console.log('DEBUG: No classrooms found, returning empty array');
+            return res.json([]);
+        }
+
+        // Find Live Classes
+        const liveClasses = await LiveClass.find({
+            classId: { $in: classIds },
+            status: { $ne: 'cancelled' }
+        })
+            .populate('teacherId', 'name avatar')
+            .sort({ startAt: 1 }); // Soonest first
+
+        console.log('DEBUG: Found Live Classes:', liveClasses.length);
+        liveClasses.forEach(lc => console.log(`   - ${lc.topic} (Status: ${lc.status})`));
+
+        res.json(liveClasses);
+
+    } catch (error) {
+        console.error('Error fetching student live classes:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
     getStudentTasks,
     getQuizById,
     submitQuizResult,
     getClassroomContent,
     getClassroomsList,
-    joinClassroom
+    joinClassroom,
+    getStudentLiveClasses
 };

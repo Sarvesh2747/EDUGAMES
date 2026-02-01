@@ -72,3 +72,28 @@ export const fetchClassroomsList = async (): Promise<ClassroomListItem[]> => {
         throw error;
     }
 };
+
+export interface LiveClassItem {
+    _id: string;
+    topic: string;
+    startAt: string;
+    duration: number;
+    status: 'scheduled' | 'live' | 'completed';
+    roomId: string;
+    teacherId: string;
+    teacherName?: string;
+}
+
+export const fetchStudentLiveClasses = async (subject?: string): Promise<LiveClassItem[]> => {
+    try {
+        const url = subject
+            ? `/student/live-classes?subject=${encodeURIComponent(subject)}`
+            : '/student/live-classes';
+
+        const response = await api.get(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching student live classes:', error);
+        return []; // Return empty array on error to prevent UI crash
+    }
+};

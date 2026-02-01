@@ -108,6 +108,7 @@ const MainNavigator = () => {
             <Stack.Screen name="DigitalWellbeing" component={require('../screens/DigitalWellbeingScreen').default} />
             <Stack.Screen name="StudentFeedback" component={require('../screens/StudentFeedbackScreen').default} />
             <Stack.Screen name="TeacherFeedback" component={require('../screens/teacher/TeacherFeedbackScreen').default} />
+            <Stack.Screen name="LiveClassRoom" component={require('../screens/LiveClassRoomScreen').default} />
         </Stack.Navigator>
     );
 };

@@ -9,5 +9,6 @@ router.get('/classroom', protect, getClassroomContent);
 router.get('/quiz/:id', protect, getQuizById);
 router.post('/quiz/submit', protect, submitQuizResult);
 router.post('/join-classroom', protect, joinClassroom);
+router.get('/live-classes', protect, require('../controllers/studentController').getStudentLiveClasses);
 
 module.exports = router;
