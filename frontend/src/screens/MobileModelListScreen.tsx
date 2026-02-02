@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Dimensions, TextInput } from 'react-native';
-import { Text, Surface } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, useWindowDimensions } from 'react-native';
+import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,13 +11,7 @@ import { MODEL_REGISTRY } from '../data/modelRegistry';
 import { spacing } from '../theme';
 import Mobile3DModelViewer from '../components/learn/Mobile3DModelViewer';
 import { useAppTheme } from '../context/ThemeContext';
-
-const { width: screenWidth } = Dimensions.get('window');
-const cardGap = spacing.md;
-// Full width minus padding
-const fullWidth = screenWidth - (spacing.lg * 2);
-// Half width calculation
-const halfWidth = (fullWidth - cardGap) / 2;
+import ScreenBackground from '../components/ScreenBackground';
 
 const CATEGORIES = ['All', 'Physics', 'Chemistry', 'Biology', 'Astronomy'];
 
@@ -25,11 +19,18 @@ const MobileModelListScreen = () => {
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
     const { isDark } = useAppTheme();
+    const { width } = useWindowDimensions();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedModel, setSelectedModel] = useState<{ name: string; fileName: string } | null>(null);
     const [viewerVisible, setViewerVisible] = useState(false);
+
+    // Calculate Grid Dimensions
+    const cardGap = spacing.md;
+    const padding = spacing.lg * 2;
+    const availableWidth = width - padding;
+    const cardWidth = (availableWidth - cardGap) / 2;
 
     const models = Object.keys(MODEL_REGISTRY).map((key, index) => ({
         name: key,
@@ -69,56 +70,18 @@ const MobileModelListScreen = () => {
         setViewerVisible(true);
     };
 
-    // Starry background component
-    const renderStars = () => {
-        const stars = [];
-        for (let i = 0; i < 80; i++) {
-            stars.push(
-                <View
-                    key={i}
-                    style={[
-                        styles.star,
-                        {
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            width: Math.random() * 3 + 1,
-                            height: Math.random() * 3 + 1,
-                            opacity: Math.random() * 0.8 + 0.2,
-                        },
-                    ]}
-                />
-            );
-        }
-        return stars;
-    };
-
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-
-            {/* Unified App Background */}
-            <LinearGradient
-                colors={isDark ? ['#0A1628', '#0F172A', '#1E293B'] : ['#F0F9FF', '#E0F2FE', '#BAE6FD']}
-                style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
-
-            {/* Starry Background for Dark Mode */}
-            {isDark && (
-                <View style={styles.starsContainer}>
-                    {renderStars()}
-                </View>
-            )}
+        <ScreenBackground style={styles.container}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
-                {/* Scrollable Header */}
+                {/* Scrollable Header - Matches Home Screen */}
                 <LinearGradient
-                    colors={['#6366F1', '#8B5CF6', '#A855F7']}
+                    colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6', '#A855F7']}
                     style={[styles.header, { paddingTop: insets.top + 8 }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -133,18 +96,18 @@ const MobileModelListScreen = () => {
                     </View>
 
                     {/* Search Bar */}
-                    <View style={styles.searchContainer}>
-                        <MaterialCommunityIcons name="magnify" size={20} color="#666" />
+                    <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
+                        <MaterialCommunityIcons name="magnify" size={20} color={isDark ? "#94A3B8" : "#666"} />
                         <TextInput
-                            style={styles.searchInput}
+                            style={[styles.searchInput, isDark && styles.searchInputDark]}
                             placeholder="Search models..."
-                            placeholderTextColor="#999"
+                            placeholderTextColor={isDark ? "#94A3B8" : "#999"}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
                         {searchQuery.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <MaterialCommunityIcons name="close-circle" size={20} color="#666" />
+                                <MaterialCommunityIcons name="close-circle" size={20} color={isDark ? "#94A3B8" : "#666"} />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -165,11 +128,13 @@ const MobileModelListScreen = () => {
                                     onPress={() => setSelectedCategory(category)}
                                     style={[
                                         styles.categoryChip,
+                                        isDark && styles.categoryChipDark,
                                         selectedCategory === category && styles.categoryChipActive
                                     ]}
                                 >
                                     <Text style={[
                                         styles.categoryText,
+                                        isDark && styles.categoryTextDark,
                                         selectedCategory === category && styles.categoryTextActive
                                     ]}>
                                         {category}
@@ -188,7 +153,7 @@ const MobileModelListScreen = () => {
                                     entering={FadeInRight.delay(index * 80)}
                                     style={[
                                         styles.modelCardWrapper,
-                                        { width: halfWidth }
+                                        { width: cardWidth }
                                     ]}
                                 >
                                     <TouchableOpacity
@@ -199,19 +164,19 @@ const MobileModelListScreen = () => {
                                             colors={[...model.gradientColors, model.gradientColors[1] + 'CC'] as any}
                                             style={[
                                                 styles.modelCard,
-                                                { minHeight: 220 }
+                                                { minHeight: 160 } // Reduced height for better grid feel
                                             ]}
                                             start={{ x: 0, y: 0 }}
                                             end={{ x: 1, y: 1 }}
                                         >
                                             <View style={styles.modelIconContainer}>
-                                                <View style={[styles.modelIconBg, { width: 48, height: 48, borderRadius: 24 }]}>
-                                                    <MaterialCommunityIcons name="cube-scan" size={24} color="#fff" />
+                                                <View style={[styles.modelIconBg, { width: 42, height: 42, borderRadius: 21 }]}>
+                                                    <MaterialCommunityIcons name="cube-scan" size={20} color="#fff" />
                                                 </View>
                                             </View>
 
                                             <View style={styles.cardContentBottom}>
-                                                <Text style={[styles.modelName, { fontSize: 16 }]} numberOfLines={2}>
+                                                <Text style={[styles.modelName, { fontSize: 15 }]} numberOfLines={2}>
                                                     {model.name}
                                                 </Text>
                                                 <View style={styles.categoryBadge}>
@@ -226,7 +191,7 @@ const MobileModelListScreen = () => {
 
                         {filteredModels.length === 0 && (
                             <Animated.View entering={FadeInDown} style={styles.emptyState}>
-                                <MaterialCommunityIcons name="cube-off-outline" size={64} color="#94A3B8" />
+                                <MaterialCommunityIcons name="cube-off-outline" size={64} color={isDark ? "#475569" : "#94A3B8"} />
                                 <Text style={styles.emptyText}>No models found</Text>
                                 <Text style={styles.emptySubtext}>Try a different search or category</Text>
                             </Animated.View>
@@ -244,7 +209,7 @@ const MobileModelListScreen = () => {
                     onClose={() => setViewerVisible(false)}
                 />
             )}
-        </View>
+        </ScreenBackground>
     );
 };
 
@@ -252,29 +217,16 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    starsContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 0,
-    },
-    star: {
-        position: 'absolute',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 50,
-    },
     scrollView: {
         flex: 1,
     },
     header: {
         paddingHorizontal: spacing.lg,
-        paddingBottom: 50, // Increased to allow overlap
+        paddingBottom: 50, // Space for overlap
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
         overflow: 'hidden',
-        zIndex: 1, // Keep behind content overlap if needed, though scroll order handles it mostly
+        zIndex: 1,
     },
     headerContent: {
         flexDirection: 'row',
@@ -309,14 +261,22 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
+    searchContainerDark: {
+        backgroundColor: '#1E293B',
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
     searchInput: {
         flex: 1,
         fontSize: 15,
         color: '#1A1A1A',
         padding: 0,
     },
+    searchInputDark: {
+        color: '#fff',
+    },
     mainContentContainer: {
-        marginTop: -15, // Overlap effect (Adjusted)
+        marginTop: -30, // Increased overlap for better integration
         zIndex: 10,
     },
     categoriesContainer: {
@@ -330,14 +290,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.9)', // Slightly more opaque for overlap visibility
+        backgroundColor: 'rgba(255,255,255,0.9)',
         borderWidth: 1,
         borderColor: '#E0E0E0',
-        elevation: 2, // Added shadow for pop
+        elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+    },
+    categoryChipDark: {
+        backgroundColor: '#1E293B',
+        borderColor: '#334155',
     },
     categoryChipActive: {
         backgroundColor: '#6366F1',
@@ -347,6 +311,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#475569',
+    },
+    categoryTextDark: {
+        color: '#CBD5E1',
     },
     categoryTextActive: {
         color: '#fff',
@@ -358,16 +325,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
+        gap: spacing.md, // Ensure gap is applied
     },
     modelCardWrapper: {
         marginBottom: spacing.md,
         borderRadius: 24,
         overflow: 'hidden',
-        elevation: 6,
+        elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
     },
     modelCard: {
         padding: spacing.md,

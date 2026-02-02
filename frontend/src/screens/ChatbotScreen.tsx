@@ -170,7 +170,7 @@ const ChatbotScreen = () => {
     return (
         <ScreenBackground style={styles.wrapper}>
             <View style={[styles.container, Platform.OS === 'web' && width > MAX_WIDTH && { width: containerWidth, alignSelf: 'center' }]}>
-                {/* Simple Header - No Gradient */}
+                {/* Header */}
                 <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#5f6368" />
@@ -181,21 +181,22 @@ const ChatbotScreen = () => {
                     </TouchableOpacity>
                 </View>
 
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={item => item.id}
-                    renderItem={renderMessage}
-                    contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
-                    style={styles.list}
-                    showsVerticalScrollIndicator={false}
-                />
-
+                {/* Main Content Area */}
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                     style={styles.keyboardView}
                 >
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        keyExtractor={item => item.id}
+                        renderItem={renderMessage}
+                        contentContainerStyle={[styles.listContent, { paddingBottom: 20 }]}
+                        style={styles.list}
+                        showsVerticalScrollIndicator={false}
+                    />
+
                     <View style={[styles.inputContainer, isDark && styles.inputContainerDark, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                         <TextInput
                             style={[styles.input, isDark && styles.inputDark]}
@@ -227,7 +228,7 @@ const ChatbotScreen = () => {
 const styles = StyleSheet.create({
     wrapper: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        // Removed backgroundColor to act responsibly with ScreenBackground
     },
     container: {
         flex: 1,
@@ -241,6 +242,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
+        zIndex: 10, // Ensure header shadow maps correctly
     },
     backButton: {
         padding: 8,
@@ -313,10 +315,7 @@ const styles = StyleSheet.create({
         color: '#333'
     },
     keyboardView: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        flex: 1, // Changed from absolute positioning to flex
     },
     inputContainer: {
         flexDirection: 'row',
