@@ -1,0 +1,9 @@
+test_suites:
+  - name: Validate Code
+    steps:
+      - name: Run Linter
+        command: linter --check .
+      - name: Run Tests
+        command: pytest
+      - name: Build Project
+        command: build_tool --build
