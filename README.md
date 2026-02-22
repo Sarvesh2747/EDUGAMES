@@ -320,5 +320,5 @@ Government of Odisha
 ---
 
 ## 📞 Support
-contact- yash.dhadge_comp23@pccoer.in
+contact- divyesh.ravane_comp23@pccoer.in
 For issues or questions, please open an issue on GitHub or contact the development team.
