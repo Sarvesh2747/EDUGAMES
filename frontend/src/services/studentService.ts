@@ -40,6 +40,7 @@ export interface ClassroomListItem {
     teacherAvatar: string;
     itemCount: number;
     startColor: string;
+    gradient?: string[];
 }
 
 export const fetchClassroomContent = async (subject?: string): Promise<ClassroomResponse> => {

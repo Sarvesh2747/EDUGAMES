@@ -17,6 +17,36 @@ import { useAuth } from '../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
+// Universal Video Component (Moved outside to prevent re-renders)
+const UniversalVideo = ({ stream, style, objectFit, zOrder, muted }: any) => {
+    if (!stream) return null;
+
+    if (Platform.OS === 'web') {
+        return (
+            <View style={style}>
+                {React.createElement('video', {
+                    ref: (video: any) => {
+                        if (video && stream) video.srcObject = stream;
+                    },
+                    autoPlay: true,
+                    playsInline: true,
+                    muted: muted, // Fixes Echo for Local Stream
+                    style: { width: '100%', height: '100%', objectFit: objectFit || 'cover' }
+                })}
+            </View>
+        );
+    }
+
+    return (
+        <RTCView
+            streamURL={stream.toURL ? stream.toURL() : null}
+            style={style}
+            objectFit={objectFit}
+            zOrder={zOrder}
+        />
+    );
+};
+
 const LiveClassRoomScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute();
@@ -27,7 +57,7 @@ const LiveClassRoomScreen = () => {
     // Media Streams
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-    const peerConnection = useRef<RTCPeerConnection | null>(null);
+    const peerConnection = useRef<any>(null); // Use any to allow easier casting
 
     // Controls
     const [isMicOn, setIsMicOn] = useState(true);
@@ -41,40 +71,19 @@ const LiveClassRoomScreen = () => {
     // Timer
     const [timeLeft, setTimeLeft] = useState(duration ? duration * 60 : 3600);
 
-    // Universal Video Component
-    const UniversalVideo = ({ stream, style, objectFit, zOrder }: any) => {
-        if (!stream) return null;
-
-        if (Platform.OS === 'web') {
-            return (
-                <View style={style}>
-                    {React.createElement('video', {
-                        ref: (video: any) => {
-                            if (video && stream) video.srcObject = stream;
-                        },
-                        autoPlay: true,
-                        playsInline: true,
-                        style: { width: '100%', height: '100%', objectFit: objectFit || 'cover' }
-                    })}
-                </View>
-            );
-        }
-
-        return (
-            <RTCView
-                streamURL={stream.toURL ? stream.toURL() : null}
-                style={style}
-                objectFit={objectFit}
-                zOrder={zOrder}
-            />
-        );
-    };
-
     useEffect(() => {
         let isMounted = true;
 
         const startCall = async () => {
             setConnectionStatus('Getting User Media...');
+
+            // Check for Browser Security Restriction (HTTP vs HTTPS)
+            if (Platform.OS === 'web' && (!mediaDevices || !mediaDevices.getUserMedia)) {
+                setConnectionStatus('Error: Secure Context Required (HTTPS/Localhost)');
+                Alert.alert('Browser Error', 'Camera/Mic not accessible. You must use HTTPS or Localhost.');
+                return;
+            }
+
             try {
                 // 1. Get Local Stream
                 const stream = await mediaDevices.getUserMedia({
@@ -96,9 +105,18 @@ const LiveClassRoomScreen = () => {
                 // 3. Setup Listeners and P2P
                 setupSocketListeners();
 
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Error starting call:', err);
-                Alert.alert('Error', 'Failed to access camera/microphone');
+
+                // Detailed Error Handling
+                let message = 'Failed to access camera/microphone';
+                if (err.name === 'NotAllowedError') message = 'Permission Denied by User';
+                else if (err.name === 'NotFoundError') message = 'No Camera/Microphone Found';
+                else if (err.name === 'NotReadableError') message = 'Camera/Mic Busy (Check other apps)';
+                else if (err.name === 'SecurityError') message = 'Security Error (HTTPS required)';
+
+                Alert.alert('Media Error', `${message}\n(${err.name})`);
+                setConnectionStatus(`Media Error: ${message}`);
             }
         };
 
@@ -129,6 +147,19 @@ const LiveClassRoomScreen = () => {
     const setupSocketListeners = () => {
         const socket = SocketService.socket;
         if (!socket) return;
+
+        // Feedback for Connection
+        if (socket.connected) {
+            setConnectionStatus('Connected to Server. Waiting for Peer...');
+        }
+        socket.on('connect', () => {
+            console.log('Socket Connected');
+            setConnectionStatus('Connected to Server. Waiting for Peer...');
+        });
+
+        socket.on('connect_error', (err: any) => {
+            setConnectionStatus(`Socket Error: ${err.message}`);
+        });
 
         socket.on('user-connected', async (userId) => {
             console.log('User Connected:', userId);
@@ -179,8 +210,7 @@ const LiveClassRoomScreen = () => {
             });
         }
 
-        // Use standard event listeners (Platform Agnostic Way) or 'as any' casting 
-        // because react-native-webrtc types vs web standards mismatch
+        // Use standard event listeners or casting for React Native WebRTC
         (pc as any).onicecandidate = (event: any) => {
             if (event.candidate && roomId) {
                 SocketService.sendIceCandidate({ roomId, candidate: event.candidate });
@@ -325,6 +355,7 @@ const LiveClassRoomScreen = () => {
                             style={styles.pipVideo}
                             objectFit="cover"
                             zOrder={1}
+                            muted={true} // IMPORTANT: Mute local stream to prevent echo
                         />
                     </View>
                 )}

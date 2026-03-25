@@ -1,23 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Image, Modal, Pressable, TextInput as RNTextInput } from 'react-native';
-import { Portal, Dialog, Button, Paragraph, TextInput } from 'react-native-paper';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Image, Modal, Pressable, Platform, StatusBar } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext'; // Added
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import ScreenBackground from '../../components/ScreenBackground';
 import { useAppTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
-import { fetchClassroom, addStudentToClassroom, removeStudentFromClassroom } from '../../services/teacherService';
-import { format } from 'date-fns';
+import { fetchClassroom, addStudentToClassroom, removeStudentFromClassroom, fetchTeacherClassroomContent } from '../../services/teacherService';
 import CustomDateTimePicker from '../../components/CustomDateTimePicker';
+import { TextInput, Button } from 'react-native-paper';
 
 const TeacherClassroomScreen = () => {
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
     const { isDark } = useAppTheme();
-    const { user } = useAuth(); // Added
     const { params } = useRoute<any>();
     const classroom = params?.classroom;
 
@@ -33,16 +31,10 @@ const TeacherClassroomScreen = () => {
         duration: '60'
     });
     const [scheduling, setScheduling] = useState(false);
-
-    // Date/Time Display helpers
-    const [dateText, setDateText] = useState(new Date().toISOString().split('T')[0]);
-    const [timeText, setTimeText] = useState('10:00');
-
-    // Picker State
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
 
-    // Tabs & Content State (Restored)
+    // Tabs & Content State
     const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people' | 'live'>('stream');
     const [content, setContent] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
@@ -52,132 +44,8 @@ const TeacherClassroomScreen = () => {
     // Modals
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-    // Forms
     const [newStudentEmail, setNewStudentEmail] = useState('');
     const [addingStudent, setAddingStudent] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState<any>(null);
-    const [announcement, setAnnouncement] = useState('');
-
-
-
-
-    // ... (render methods)
-
-    // Schedule Live Class Modal (redesigned)
-    const renderScheduleModal = () => (
-        <Modal visible={showScheduleModal} transparent animationType="slide" onRequestClose={() => setShowScheduleModal(false)}>
-            <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' }]}>
-                    <Text style={[styles.modalTitle, { color: isDark ? '#FFF' : '#202124' }]}>Schedule Live Class</Text>
-
-                    {/* Topic Input - Premium Style */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Topic</Text>
-                        <TextInput
-                            mode="outlined"
-                            value={scheduleForm.topic}
-                            onChangeText={(text) => setScheduleForm({ ...scheduleForm, topic: text })}
-                            style={styles.premiumInput}
-                            outlineColor={isDark ? '#4A5568' : '#DADCE0'}
-                            activeOutlineColor="#1967D2"
-                            textColor={isDark ? '#FFF' : '#000'}
-                            theme={{ colors: { onSurfaceVariant: isDark ? '#A0AEC0' : '#5f6368' } }}
-                        />
-                    </View>
-
-                    <View style={styles.row}>
-                        {/* Date Picker Trigger */}
-                        <TouchableOpacity
-                            style={[styles.pickerButton, { borderColor: isDark ? '#4A5568' : '#DADCE0' }]}
-                            onPress={() => setShowDatePicker(true)}
-                        >
-                            <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Date</Text>
-                            <View style={styles.pickerContent}>
-                                <MaterialCommunityIcons name="calendar-month-outline" size={20} color={isDark ? '#FFF' : '#5f6368'} />
-                                <Text style={[styles.pickerText, { color: isDark ? '#FFF' : '#202124' }]}>
-                                    {format(scheduleForm.date, 'MMM d, yyyy')}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* Time Picker Trigger */}
-                        <TouchableOpacity
-                            style={[styles.pickerButton, { borderColor: isDark ? '#4A5568' : '#DADCE0' }]}
-                            onPress={() => setShowTimePicker(true)}
-                        >
-                            <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Time</Text>
-                            <View style={styles.pickerContent}>
-                                <MaterialCommunityIcons name="clock-outline" size={20} color={isDark ? '#FFF' : '#5f6368'} />
-                                <Text style={[styles.pickerText, { color: isDark ? '#FFF' : '#202124' }]}>
-                                    {format(scheduleForm.startTime, 'h:mm a')}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Duration Input */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.inputLabel, { color: isDark ? '#A0AEC0' : '#5f6368' }]}>Duration (minutes)</Text>
-                        <TextInput
-                            mode="outlined"
-                            value={scheduleForm.duration}
-                            onChangeText={(text) => setScheduleForm({ ...scheduleForm, duration: text })}
-                            keyboardType="numeric"
-                            style={styles.premiumInput}
-                            outlineColor={isDark ? '#4A5568' : '#DADCE0'}
-                            activeOutlineColor="#1967D2"
-                            textColor={isDark ? '#FFF' : '#000'}
-                            theme={{ colors: { onSurfaceVariant: isDark ? '#A0AEC0' : '#5f6368' } }}
-                        />
-                    </View>
-
-                    <View style={styles.modalButtons}>
-                        <Button mode="text" onPress={() => setShowScheduleModal(false)} textColor={isDark ? '#A0AEC0' : '#5f6368'}>
-                            Cancel
-                        </Button>
-                        <Button
-                            mode="contained"
-                            onPress={handleScheduleClass}
-                            loading={scheduling}
-                            buttonColor="#D93025"
-                            style={styles.scheduleButton}
-                        >
-                            Schedule
-                        </Button>
-                    </View>
-                </View>
-            </View>
-
-            {/* Custom Pickers */}
-            <CustomDateTimePicker
-                visible={showDatePicker}
-                mode="date"
-                initialDate={scheduleForm.date}
-                onClose={() => setShowDatePicker(false)}
-                onSelect={(date) => {
-                    setScheduleForm({ ...scheduleForm, date: date });
-                    setShowDatePicker(false);
-                }}
-            />
-
-            <CustomDateTimePicker
-                visible={showTimePicker}
-                mode="time"
-                initialDate={scheduleForm.startTime}
-                onClose={() => setShowTimePicker(false)}
-                onSelect={(date) => {
-                    setScheduleForm({ ...scheduleForm, startTime: date });
-                    setShowTimePicker(false);
-                }}
-            />
-        </Modal>
-    );
-
-
-
-
 
     useEffect(() => {
         loadData();
@@ -185,8 +53,13 @@ const TeacherClassroomScreen = () => {
 
     const loadData = async () => {
         setLoading(true);
-        await Promise.all([fetchContent(), loadClassroomDetails(), fetchLiveClasses()]);
-        setLoading(false);
+        try {
+            await Promise.all([fetchContent(), loadClassroomDetails(), fetchLiveClasses()]);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const fetchLiveClasses = async () => {
@@ -199,6 +72,26 @@ const TeacherClassroomScreen = () => {
         }
     };
 
+    const fetchContent = async () => {
+        if (!classroom?._id) return;
+        try {
+            const data = await fetchTeacherClassroomContent(classroom._id);
+            setContent(data);
+        } catch (error) {
+            console.error('Failed to fetch content', error);
+        }
+    };
+
+    const loadClassroomDetails = async () => {
+        if (!classroom?._id) return;
+        try {
+            const data = await fetchClassroom(classroom._id);
+            setStudents(data.students || []);
+        } catch (error) {
+            console.error('Failed to fetch classroom details', error);
+        }
+    };
+
     const handleScheduleClass = async () => {
         if (!scheduleForm.topic || !scheduleForm.duration) {
             Alert.alert('Error', 'Please fill all fields');
@@ -207,898 +100,461 @@ const TeacherClassroomScreen = () => {
 
         setScheduling(true);
         try {
-            const finalDate = new Date(scheduleForm.date);
-            finalDate.setHours(scheduleForm.startTime.getHours());
-            finalDate.setMinutes(scheduleForm.startTime.getMinutes());
+            const combinedDateTime = new Date(scheduleForm.date);
+            combinedDateTime.setHours(scheduleForm.startTime.getHours());
+            combinedDateTime.setMinutes(scheduleForm.startTime.getMinutes());
 
-            if (isNaN(finalDate.getTime())) {
-                throw new Error('Invalid Date/Time format');
-            }
-
-            const payload = {
-                classId: classroom.classId || classroom._id,
-                subject: classroom.subjectId || classroom.subject,
+            await api.post('/live-classes/schedule', {
+                classroomId: classroom._id,
                 topic: scheduleForm.topic,
-                startAt: finalDate,
+                startAt: combinedDateTime.toISOString(),
                 duration: parseInt(scheduleForm.duration)
-            };
-
-            await api.post('/live-classes/schedule', payload);
-            Alert.alert('Success', 'Live Class Scheduled!');
-            setShowScheduleModal(false);
-            setScheduleForm({
-                topic: '',
-                date: new Date(),
-                startTime: new Date(),
-                duration: '60'
             });
+
+            Alert.alert('Success', 'Class scheduled successfully');
+            setShowScheduleModal(false);
             fetchLiveClasses();
-        } catch (error: any) {
-            Alert.alert('Error', error?.response?.data?.message || 'Failed to schedule class');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to schedule class');
         } finally {
             setScheduling(false);
         }
     };
 
-    const loadClassroomDetails = async () => {
-        if (classroom?._id) {
-            try {
-                const data = await fetchClassroom(classroom._id);
-                if (data.students) {
-                    setStudents(data.students);
-                }
-            } catch (error) {
-                console.error('Failed to load classroom details', error);
-            }
-        }
-    };
-
-    const fetchContent = async () => {
-        try {
-            const response = await api.get('/teacher/content');
-            let data = response.data;
-            if (data.quizzes || data.chapters) {
-                const formatted = [
-                    ...(data.quizzes || []).map((q: any) => ({ ...q, type: 'quiz' })),
-                    ...(data.chapters || []).map((c: any) => ({ ...c, type: 'chapter' }))
-                ];
-                setContent(formatted);
-            }
-        } catch (error) {
-            console.error('Error fetching content:', error);
-        }
+    const handleStartClass = (classId: string) => {
+        navigation.navigate('LiveClassRoom', {
+            roomId: classId,
+            isStudent: false,
+            topic: liveClasses.find(c => c.roomId === classId)?.topic
+        });
     };
 
     const handleAddStudent = async () => {
-        if (!newStudentEmail.trim() || !classroom?._id) {
-            Alert.alert('Error', 'Please enter a valid email');
-            return;
-        }
-
+        if (!newStudentEmail) return;
         setAddingStudent(true);
         try {
-            await addStudentToClassroom(classroom._id, newStudentEmail.trim());
+            await addStudentToClassroom(classroom._id, newStudentEmail);
             Alert.alert('Success', 'Student added successfully');
             setNewStudentEmail('');
             setShowAddStudentModal(false);
-            await loadClassroomDetails();
-        } catch (error: any) {
-            Alert.alert('Error', error?.response?.data?.message || 'Failed to add student');
+            loadClassroomDetails();
+        } catch (error) {
+            Alert.alert('Error', 'Failed to add student');
         } finally {
             setAddingStudent(false);
         }
     };
 
-    const handleRemoveStudent = (studentId: string) => {
-        Alert.alert(
-            'Remove Student',
-            'Are you sure you want to remove this student from the classroom?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Remove',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            if (classroom?._id) {
-                                await removeStudentFromClassroom(classroom._id, studentId);
-                                await loadClassroomDetails();
-                                Alert.alert('Success', 'Student removed successfully');
-                            }
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to remove student');
-                        }
-                    }
-                }
-            ]
-        );
+    const themeStyles = {
+        text: isDark ? '#F8FAFC' : '#1E293B',
+        subtext: isDark ? '#94A3B8' : '#64748B',
+        cardBg: isDark ? '#1E293B' : '#fff',
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0',
+        tabActive: isDark ? '#818CF8' : '#4F46E5',
+        tabInactive: isDark ? '#94A3B8' : '#64748B',
+        inputBg: isDark ? '#334155' : '#F1F5F9',
     };
-
-    const handleDeletePress = (item: any) => {
-        setItemToDelete(item);
-        setShowDeleteDialog(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!itemToDelete) return;
-
-        try {
-            if (itemToDelete.type === 'quiz') {
-                await api.delete(`/teacher/quiz/${itemToDelete._id}`);
-            } else {
-                await api.delete(`/teacher/chapter/${itemToDelete._id}`);
-            }
-            await fetchContent();
-        } catch (error) {
-            console.error('Delete error:', error);
-            Alert.alert('Error', 'Failed to delete content');
-        } finally {
-            setShowDeleteDialog(false);
-            setItemToDelete(null);
-        }
-    };
-
-    const handleCreateContent = (type: 'quiz' | 'chapter') => {
-        setShowCreateModal(false);
-        if (type === 'quiz') {
-            (navigation as any).navigate('TeacherQuizCreator');
-        } else {
-            (navigation as any).navigate('TeacherContentManager');
-        }
-    };
-
-    const renderHeader = () => (
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-                <MaterialCommunityIcons name="arrow-left" size={24} color="#5f6368" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>{classroom?.title || 'Social'}</Text>
-            <TouchableOpacity style={styles.headerButton}>
-                <MaterialCommunityIcons name="dots-vertical" size={24} color="#5f6368" />
-            </TouchableOpacity>
-        </View>
-    );
-
-    const renderBanner = () => (
-        <View style={styles.bannerContainer}>
-            <LinearGradient
-                colors={classroom?.gradient || ['#10B981', '#059669']}
-                style={styles.bannerGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            >
-                <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=800&h=300&fit=crop' }}
-                    style={styles.bannerImage}
-                    resizeMode="cover"
-                />
-                <LinearGradient
-                    colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.7)']}
-                    style={styles.bannerOverlay}
-                >
-                    <View style={styles.bannerContent}>
-                        <Text style={styles.bannerTitle}>{classroom?.title || 'Social'}</Text>
-                        <Text style={styles.bannerSubtitle}>
-                            {classroom?.section
-                                ? `${classroom.classNumber}${classroom.section}`
-                                : `Class ${classroom?.classNumber || ''}`}
-                        </Text>
-                    </View>
-                    <TouchableOpacity style={styles.bannerInfoButton}>
-                        <MaterialCommunityIcons name="information-outline" size={28} color="#fff" />
-                    </TouchableOpacity>
-                </LinearGradient>
-            </LinearGradient>
-        </View>
-    );
 
     const renderTabs = () => (
-        <View style={styles.tabsContainer}>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === 'stream' && styles.activeTab]}
-                onPress={() => setActiveTab('stream')}
-            >
-                <Text style={[styles.tabText, activeTab === 'stream' && styles.activeTabText]}>STREAM</Text>
-                {activeTab === 'stream' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === 'classwork' && styles.activeTab]}
-                onPress={() => setActiveTab('classwork')}
-            >
-                <Text style={[styles.tabText, activeTab === 'classwork' && styles.activeTabText]}>CLASSWORK</Text>
-                {activeTab === 'classwork' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === 'people' && styles.activeTab]}
-                onPress={() => setActiveTab('people')}
-            >
-                <Text style={[styles.tabText, activeTab === 'people' && styles.activeTabText]}>PEOPLE</Text>
-                {activeTab === 'people' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === 'live' && styles.activeTab]}
-                onPress={() => setActiveTab('live')}
-            >
-                <Text style={[styles.tabText, activeTab === 'live' && styles.activeTabText]}>LIVE</Text>
-                {activeTab === 'live' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
+        <View style={[styles.tabContainer, { backgroundColor: isDark ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.8)' }]}>
+            {['stream', 'live', 'classwork', 'people'].map((tab) => {
+                const isActive = activeTab === tab;
+                return (
+                    <TouchableOpacity
+                        key={tab}
+                        style={[styles.tabItem, isActive && { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF' }]}
+                        onPress={() => setActiveTab(tab as any)}
+                    >
+                        <Text style={[
+                            styles.tabText,
+                            { color: isActive ? themeStyles.tabActive : themeStyles.tabInactive }
+                        ]}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
         </View>
     );
 
     const renderStreamTab = () => (
-        <ScrollView style={styles.tabContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}>
-            {/* Announcement Input */}
-            <View style={styles.announcementCard}>
-                <View style={styles.announcementInputRow}>
-                    <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>T</Text>
-                    </View>
-                    <TouchableOpacity style={styles.announcementInput}>
-                        <Text style={styles.announcementPlaceholder}>Share with your class...</Text>
-                    </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Banner */}
+            <LinearGradient
+                colors={['#4F46E5', '#3B82F6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.banner}
+            >
+                <View style={styles.bannerContent}>
+                    <Text style={styles.bannerTitle}>{classroom?.subject || 'Classroom'}</Text>
+                    <Text style={styles.bannerSubtitle}>{classroom?.className || 'Section A'}</Text>
                 </View>
+                <MaterialCommunityIcons name="information" size={24} color="rgba(255,255,255,0.7)" style={styles.bannerIcon} />
+            </LinearGradient>
+
+            {/* Quick Actions */}
+            <View style={styles.quickActions}>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]} onPress={() => setShowCreateModal(true)}>
+                    <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
+                        <MaterialCommunityIcons name="plus" size={24} color="#4F46E5" />
+                    </View>
+                    <Text style={[styles.actionText, { color: themeStyles.text }]}>Create</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]} onPress={() => setShowScheduleModal(true)}>
+                    <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}>
+                        <MaterialCommunityIcons name="video-plus" size={24} color="#EF4444" />
+                    </View>
+                    <Text style={[styles.actionText, { color: themeStyles.text }]}>Live Class</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]} onPress={() => setShowAddStudentModal(true)}>
+                    <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
+                        <MaterialCommunityIcons name="account-plus" size={24} color="#10B981" />
+                    </View>
+                    <Text style={[styles.actionText, { color: themeStyles.text }]}>Add Student</Text>
+                </TouchableOpacity>
             </View>
 
-            {/* Sample Post */}
-            <View style={styles.postCard}>
-                <View style={styles.postHeader}>
-                    <View style={styles.postIcon}>
-                        <MaterialCommunityIcons name="file-document-outline" size={24} color="#1967D2" />
-                    </View>
-                    <View style={styles.postInfo}>
-                        <Text style={styles.postAuthor}>Teacher posted a new assignment: HTML Hard Quiz</Text>
-                        <Text style={styles.postDate}>31/1/2026</Text>
-                    </View>
-                    <MaterialCommunityIcons name="check" size={20} color="#1E8E3E" />
-                </View>
-            </View>
-
-            <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="forum-outline" size={64} color="#DADCE0" />
-                <Text style={styles.emptyText}>This is where you'll see posts</Text>
-                <Text style={styles.emptySubtext}>from teachers and classmates</Text>
-            </View>
-        </ScrollView>
-    );
-
-    const renderClassworkTab = () => (
-        <ScrollView style={styles.tabContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}>
-            {loading ? (
-                <ActivityIndicator size="large" color="#1967D2" style={{ marginTop: 40 }} />
-            ) : content.length === 0 ? (
-                <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="book-open-page-variant-outline" size={64} color="#DADCE0" />
-                    <Text style={styles.emptyText}>No classwork yet</Text>
-                    <Button mode="contained" onPress={() => setShowCreateModal(true)} style={{ marginTop: 16 }}>
-                        Create Assignment
-                    </Button>
-                </View>
+            {/* Recent Activity */}
+            <Text style={[styles.sectionTitle, { color: themeStyles.subtext }]}>RECENT ACTIVITY</Text>
+            {content.length === 0 ? (
+                <Text style={[styles.emptyText, { color: themeStyles.subtext }]}>No items created yet</Text>
             ) : (
-                <View style={styles.contentList}>
-                    {content.map((item) => (
-                        <View key={item._id} style={styles.contentCard}>
-                            <View style={styles.contentIcon}>
+                content.slice(0, 5).map((item, index) => (
+                    <Animated.View key={item._id} entering={FadeInDown.delay(index * 100)}>
+                        <TouchableOpacity style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]}>
+                            <View style={[styles.iconCircle, { backgroundColor: item.type === 'quiz' ? '#EEF2FF' : '#FFF7ED' }]}>
                                 <MaterialCommunityIcons
-                                    name={item.type === 'quiz' ? 'file-document-edit-outline' : 'book-open-variant'}
+                                    name={item.type === 'quiz' ? 'clipboard-text' : 'book-open-variant'}
                                     size={24}
-                                    color="#1967D2"
+                                    color={item.type === 'quiz' ? '#4F46E5' : '#F97316'}
                                 />
                             </View>
-                            <View style={styles.contentInfo}>
-                                <Text style={styles.contentTitle}>{item.title}</Text>
-                                <Text style={styles.contentMeta}>
-                                    {item.type === 'quiz' ? `${item.questions?.length || 0} questions` : item.subject}
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.feedTitle, { color: themeStyles.text }]}>{item.title}</Text>
+                                <Text style={[styles.feedDate, { color: themeStyles.subtext }]}>
+                                    Posted {new Date(item.createdAt).toLocaleDateString()}
                                 </Text>
                             </View>
-                            <View style={styles.contentActions}>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        if (item.type === 'quiz') {
-                                            (navigation as any).navigate('Quiz', { quizId: item._id });
-                                        } else {
-                                            (navigation as any).navigate('TeacherChapterViewer', { chapter: item });
-                                        }
-                                    }}
-                                    style={styles.actionButton}
-                                >
-                                    <MaterialCommunityIcons name="eye-outline" size={20} color="#5f6368" />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
-                                    <MaterialCommunityIcons name="delete-outline" size={20} color="#EA4335" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ))}
-                </View>
-            )}
-
-            {/* FAB for Creating Content */}
-            {!loading && (
-                <TouchableOpacity style={styles.fab} onPress={() => setShowCreateModal(true)}>
-                    <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-                </TouchableOpacity>
-            )}
-        </ScrollView>
-    );
-
-    const renderPeopleTab = () => (
-        <ScrollView style={styles.tabContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}>
-            {/* Teachers Section */}
-            <View style={styles.peopleSection}>
-                <View style={styles.peopleSectionHeader}>
-                    <Text style={styles.peopleSectionTitle}>Teachers</Text>
-                </View>
-                <View style={styles.personCard}>
-                    <View style={styles.personAvatar}>
-                        <Text style={styles.personAvatarText}>T</Text>
-                    </View>
-                    <Text style={styles.personName}>Teacher</Text>
-                </View>
-            </View>
-
-            {/* Students Section */}
-            <View style={styles.peopleSection}>
-                <View style={styles.peopleSectionHeader}>
-                    <Text style={styles.peopleSectionTitle}>Students</Text>
-                    <Text style={styles.peopleCount}>{students.length}</Text>
-                </View>
-
-                {students.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <MaterialCommunityIcons name="account-group-outline" size={64} color="#DADCE0" />
-                        <Text style={styles.emptyText}>No students yet</Text>
-                        <Button mode="contained" onPress={() => setShowAddStudentModal(true)} style={{ marginTop: 16 }}>
-                            Add Student
-                        </Button>
-                    </View>
-                ) : (
-                    students.map((student) => (
-                        <View key={student._id} style={styles.personCard}>
-                            <View style={styles.personAvatar}>
-                                <Text style={styles.personAvatarText}>
-                                    {student.name?.charAt(0).toUpperCase() || 'S'}
-                                </Text>
-                            </View>
-                            <View style={styles.personInfo}>
-                                <Text style={styles.personName}>{student.name}</Text>
-                                <Text style={styles.personEmail}>{student.email}</Text>
-                            </View>
-                            <TouchableOpacity onPress={() => handleRemoveStudent(student._id)}>
-                                <MaterialCommunityIcons name="account-remove-outline" size={20} color="#EA4335" />
-                            </TouchableOpacity>
-                        </View>
-                    ))
-                )}
-            </View>
-
-            {/* FAB for Adding Students */}
-            {students.length > 0 && (
-                <TouchableOpacity style={styles.fab} onPress={() => setShowAddStudentModal(true)}>
-                    <MaterialCommunityIcons name="account-plus" size={24} color="#fff" />
-                </TouchableOpacity>
+                        </TouchableOpacity>
+                    </Animated.View>
+                ))
             )}
         </ScrollView>
     );
 
     const renderLiveTab = () => (
-        <ScrollView style={styles.tabContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={[styles.sectionTitle, { color: '#EF4444', marginBottom: 0 }]}>LIVE CLASSES</Text>
+                <TouchableOpacity onPress={() => setShowScheduleModal(true)} style={styles.addBtnSmall}>
+                    <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>SCHEDULE</Text>
+                </TouchableOpacity>
+            </View>
+
             {liveClasses.length === 0 ? (
-                <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="video-wireless-outline" size={64} color="#DADCE0" />
-                    <Text style={styles.emptyText}>No live classes scheduled</Text>
-                    <Button mode="contained" onPress={() => setShowScheduleModal(true)} style={{ marginTop: 16 }} buttonColor="#D93025">
-                        Schedule Live Class
-                    </Button>
-                </View>
+                <Text style={[styles.emptyText, { color: themeStyles.subtext }]}>No classes scheduled</Text>
             ) : (
-                <View style={styles.contentList}>
-                    <Button mode="contained" onPress={() => setShowScheduleModal(true)} style={{ marginBottom: 16 }} buttonColor="#D93025">
-                        Schedule New Class
-                    </Button>
-                    {liveClasses.map((item) => (
-                        <TouchableOpacity
-                            key={item._id}
-                            style={[styles.contentCard, { borderLeftWidth: 4, borderLeftColor: item.status === 'live' ? '#D93025' : '#1967D2' }]}
-                            onPress={() => navigation.navigate('LiveClassRoom', {
-                                roomId: item.roomId,
-                                topic: item.topic,
-                                duration: item.duration,
-                                teacherId: user?._id
-                            })}
-                        >
-                            <View style={[styles.contentIcon, { backgroundColor: item.status === 'live' ? '#FCE8E6' : '#E8F0FE' }]}>
+                liveClasses.map((item) => (
+                    <LinearGradient
+                        key={item._id}
+                        colors={(item.status === 'live' ? ['rgba(239, 68, 68, 0.1)', 'rgba(239, 68, 68, 0.05)'] : [themeStyles.cardBg, themeStyles.cardBg]) as any}
+                        style={[styles.card, { borderColor: item.status === 'live' ? '#EF4444' : themeStyles.borderColor, flexDirection: 'column', alignItems: 'flex-start' }]}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 12 }}>
+                            <View style={[styles.iconCircle, { backgroundColor: item.status === 'live' ? '#FEE2E2' : '#EEF2FF', marginRight: 12 }]}>
                                 <MaterialCommunityIcons
                                     name={item.status === 'live' ? "video-wireless" : "calendar-clock"}
                                     size={24}
-                                    color={item.status === 'live' ? "#D93025" : "#1967D2"}
+                                    color={item.status === 'live' ? "#EF4444" : "#4F46E5"}
                                 />
                             </View>
-                            <View style={styles.contentInfo}>
-                                <Text style={styles.contentTitle}>{item.topic}</Text>
-                                <Text style={styles.contentMeta}>
-                                    {new Date(item.startAt).toLocaleDateString()} at {new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.listTitle, { color: item.status === 'live' ? '#EF4444' : themeStyles.text }]}>
+                                    {item.status === 'live' ? 'LIVE NOW' : 'Scheduled'}
                                 </Text>
-                                <Text style={[styles.contentMeta, { color: item.status === 'live' ? '#D93025' : '#5f6368', fontWeight: item.status === 'live' ? 'bold' : 'normal' }]}>
-                                    Status: {item.status.toUpperCase()} • {item.duration} mins
+                                <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>
+                                    {new Date(item.startAt).toLocaleDateString()} • {item.duration} mins
                                 </Text>
                             </View>
-                            <View style={styles.contentActions}>
-                                {item.status === 'live' && (
-                                    <Button mode="contained" compact buttonColor="#D93025" onPress={() => console.log('Join/Host')}>
-                                        HOST
-                                    </Button>
-                                )}
-                            </View>
+                            <TouchableOpacity onPress={() => {/* Edit/Delete Logic */ }}>
+                                <MaterialCommunityIcons name="dots-horizontal" size={24} color={themeStyles.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.listTitle, { color: themeStyles.text, fontSize: 18, marginBottom: 16 }]}>{item.topic}</Text>
+
+                        <TouchableOpacity
+                            style={[styles.joinBtnLarge, { backgroundColor: item.status === 'live' ? '#EF4444' : '#4F46E5', alignSelf: 'stretch', alignItems: 'center' }]}
+                            onPress={() => item.status === 'live' ? handleStartClass(item.roomId) : Alert.alert('Not Live', 'This class has not started yet')}
+                        >
+                            <Text style={styles.joinBtnTextLarge}>
+                                {item.status === 'live' ? 'JOIN CLASS' : 'START CLASS'}
+                            </Text>
                         </TouchableOpacity>
-                    ))}
-                </View>
+                    </LinearGradient>
+                ))
             )}
         </ScrollView>
     );
 
-    if (!classroom) {
-        return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>Classroom not found</Text>
+    const renderClassworkTab = () => (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={[styles.sectionTitle, { color: themeStyles.subtext, marginBottom: 0 }]}>CLASSWORK</Text>
+                <TouchableOpacity onPress={() => setShowCreateModal(true)} style={[styles.addBtnSmall, { backgroundColor: '#4F46E5' }]}>
+                    <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>CREATE</Text>
+                </TouchableOpacity>
             </View>
-        );
-    }
+
+            <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor, padding: 0 }]}>
+                {content.map((item, idx, arr) => (
+                    <React.Fragment key={item._id}>
+                        <TouchableOpacity style={styles.listItem}>
+                            <View style={[styles.iconBox, { backgroundColor: item.type === 'quiz' ? '#EEF2FF' : '#FFF7ED' }]}>
+                                <MaterialCommunityIcons
+                                    name={item.type === 'quiz' ? 'clipboard-text' : 'book-open-variant'}
+                                    size={20}
+                                    color={item.type === 'quiz' ? '#4F46E5' : '#F97316'}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.listTitle, { color: themeStyles.text }]}>{item.title}</Text>
+                                <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>
+                                    {item.type.toUpperCase()} • {new Date(item.createdAt).toLocaleDateString()}
+                                </Text>
+                            </View>
+                            <MaterialCommunityIcons name="chevron-right" size={24} color={themeStyles.subtext} />
+                        </TouchableOpacity>
+                        {idx < arr.length - 1 && <View style={[styles.divider, { backgroundColor: themeStyles.borderColor }]} />}
+                    </React.Fragment>
+                ))}
+            </View>
+        </ScrollView>
+    );
+
+    const renderPeopleTab = () => (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={[styles.sectionTitle, { color: '#4F46E5', marginBottom: 0 }]}>STUDENTS ({students.length})</Text>
+                <TouchableOpacity onPress={() => setShowAddStudentModal(true)} style={[styles.addBtnSmall, { backgroundColor: '#4F46E5' }]}>
+                    <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>INVITE</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]}>
+                {students.map((student, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+                        <View style={[styles.avatarMedium, { backgroundColor: `hsl(${i * 45}, 70%, 50%)`, justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>{(student.name || 'S').charAt(0)}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.listTitle, { color: themeStyles.text }]}>{student.name || student.email}</Text>
+                            <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>{student.email}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => {/* Remove Logic */ }}>
+                            <MaterialCommunityIcons name="delete-outline" size={24} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+            </View>
+        </ScrollView>
+    );
 
     return (
         <ScreenBackground style={styles.container}>
-            {renderHeader()}
-            {renderBanner()}
-            {renderTabs()}
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
-            {activeTab === 'stream' && renderStreamTab()}
-            {activeTab === 'classwork' && renderClassworkTab()}
-            {activeTab === 'people' && renderPeopleTab()}
-            {activeTab === 'live' && renderLiveTab()}
-
-            {/* Create Content Modal */}
-            <Modal visible={showCreateModal} transparent animationType="fade" onRequestClose={() => setShowCreateModal(false)}>
-                {/* ... existing content ... */}
-                <Pressable style={styles.modalOverlay} onPress={() => setShowCreateModal(false)}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Create Content</Text>
-                        <TouchableOpacity style={styles.modalOption} onPress={() => handleCreateContent('quiz')}>
-                            <MaterialCommunityIcons name="file-document-edit" size={24} color="#1967D2" />
-                            <Text style={styles.modalOptionText}>Quiz Assignment</Text>
+            {/* Header */}
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6']}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
+            >
+                <View style={styles.centerContainer}>
+                    <View style={styles.headerRow}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.modalOption} onPress={() => handleCreateContent('chapter')}>
-                            <MaterialCommunityIcons name="book-open-variant" size={24} color="#1967D2" />
-                            <Text style={styles.modalOptionText}>Chapter/Material</Text>
+                        <Text style={styles.headerTitle} numberOfLines={1}>{classroom?.subject || 'Classroom'}</Text>
+                        <TouchableOpacity style={styles.iconBtn}>
+                            <MaterialCommunityIcons name="cog" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <Button mode="text" onPress={() => setShowCreateModal(false)}>Cancel</Button>
                     </View>
+                    {renderTabs()}
+                </View>
+            </LinearGradient>
+
+            {/* Content */}
+            <View style={styles.centerContainer}>
+                <View style={styles.content}>
+                    {activeTab === 'stream' && renderStreamTab()}
+                    {activeTab === 'live' && renderLiveTab()}
+                    {activeTab === 'classwork' && renderClassworkTab()}
+                    {activeTab === 'people' && renderPeopleTab()}
+                </View>
+            </View>
+
+            {/* Modals */}
+            <Modal visible={showCreateModal} transparent animationType="fade" onRequestClose={() => setShowCreateModal(false)}>
+                <Pressable style={styles.modalOverlay} onPress={() => setShowCreateModal(false)}>
+                    <Pressable style={[styles.modalCard, { backgroundColor: themeStyles.cardBg }]} onPress={(e) => e.stopPropagation()}>
+                        <Text style={[styles.modalTitle, { color: themeStyles.text }]}>Create Content</Text>
+                        <TouchableOpacity style={styles.modalOption} onPress={() => { setShowCreateModal(false); navigation.navigate('TeacherQuizCreator', { classroomId: classroom._id }); }}>
+                            <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
+                                <MaterialCommunityIcons name="clipboard-text-outline" size={24} color="#4F46E5" />
+                            </View>
+                            <Text style={[styles.modalOptionText, { color: themeStyles.text }]}>Quiz / Assignment</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalOption} onPress={() => { setShowCreateModal(false); /* Nav to material */ }}>
+                            <View style={[styles.iconBox, { backgroundColor: '#FFF7ED' }]}>
+                                <MaterialCommunityIcons name="book-open-variant" size={24} color="#F97316" />
+                            </View>
+                            <Text style={[styles.modalOptionText, { color: themeStyles.text }]}>Study Material</Text>
+                        </TouchableOpacity>
+                    </Pressable>
                 </Pressable>
             </Modal>
 
-            {/* Schedule Live Class Modal */}
-            {renderScheduleModal()}
+            <Modal visible={showScheduleModal} transparent animationType="fade" onRequestClose={() => setShowScheduleModal(false)}>
+                <Pressable style={styles.modalOverlay} onPress={() => setShowScheduleModal(false)}>
+                    <Pressable style={[styles.modalCard, { backgroundColor: themeStyles.cardBg }]} onPress={(e) => e.stopPropagation()}>
+                        <Text style={[styles.modalTitle, { color: themeStyles.text }]}>Schedule Live Class</Text>
 
-            {/* Add Student Modal */}
-            <Modal visible={showAddStudentModal} transparent animationType="slide" onRequestClose={() => setShowAddStudentModal(false)}>
-                {/* ... existing content ... */}
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Add Student</Text>
                         <TextInput
-                            mode="outlined"
+                            label="Topic"
+                            value={scheduleForm.topic}
+                            onChangeText={(t) => setScheduleForm({ ...scheduleForm, topic: t })}
+                            style={{ backgroundColor: themeStyles.inputBg, marginBottom: 12 }}
+                            textColor={themeStyles.text}
+                        />
+                        <TextInput
+                            label="Duration (mins)"
+                            value={scheduleForm.duration}
+                            onChangeText={(t) => setScheduleForm({ ...scheduleForm, duration: t })}
+                            keyboardType="numeric"
+                            style={{ backgroundColor: themeStyles.inputBg, marginBottom: 16 }}
+                            textColor={themeStyles.text}
+                        />
+
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                            <Button mode="outlined" onPress={() => setShowDatePicker(true)} style={{ flex: 1 }}>
+                                {scheduleForm.date.toLocaleDateString()}
+                            </Button>
+                            <Button mode="outlined" onPress={() => setShowTimePicker(true)} style={{ flex: 1 }}>
+                                {scheduleForm.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Button>
+                        </View>
+
+                        <Button mode="contained" loading={scheduling} onPress={handleScheduleClass} style={{ backgroundColor: '#4F46E5' }}>
+                            SCHEDULE
+                        </Button>
+
+                        {showDatePicker && (
+                            <CustomDateTimePicker
+                                value={scheduleForm.date}
+                                mode="date"
+                                onChange={(d) => { setShowDatePicker(false); if (d) setScheduleForm({ ...scheduleForm, date: d }); }}
+                                onClose={() => setShowDatePicker(false)}
+                            />
+                        )}
+                        {showTimePicker && (
+                            <CustomDateTimePicker
+                                value={scheduleForm.startTime}
+                                mode="time"
+                                onChange={(d) => { setShowTimePicker(false); if (d) setScheduleForm({ ...scheduleForm, startTime: d }); }}
+                                onClose={() => setShowTimePicker(false)}
+                            />
+                        )}
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            <Modal visible={showAddStudentModal} transparent animationType="fade" onRequestClose={() => setShowAddStudentModal(false)}>
+                <Pressable style={styles.modalOverlay} onPress={() => setShowAddStudentModal(false)}>
+                    <Pressable style={[styles.modalCard, { backgroundColor: themeStyles.cardBg }]} onPress={(e) => e.stopPropagation()}>
+                        <Text style={[styles.modalTitle, { color: themeStyles.text }]}>Add Student</Text>
+                        <TextInput
                             label="Student Email"
                             value={newStudentEmail}
                             onChangeText={setNewStudentEmail}
-                            keyboardType="email-address"
+                            style={{ backgroundColor: themeStyles.inputBg, marginBottom: 20 }}
+                            textColor={themeStyles.text}
                             autoCapitalize="none"
-                            style={{ marginBottom: 16 }}
                         />
-                        <View style={styles.modalButtons}>
-                            <Button mode="text" onPress={() => setShowAddStudentModal(false)}>Cancel</Button>
-                            <Button mode="contained" onPress={handleAddStudent} loading={addingStudent}>
-                                Add
-                            </Button>
-                        </View>
-                    </View>
-                </View>
+                        <Button mode="contained" loading={addingStudent} onPress={handleAddStudent} style={{ backgroundColor: '#10B981' }}>
+                            INVITE STUDENT
+                        </Button>
+                    </Pressable>
+                </Pressable>
             </Modal>
 
-            {/* Delete Dialog */}
-            <Portal>
-                {/* ... existing content ... */}
-                <Dialog visible={showDeleteDialog} onDismiss={() => setShowDeleteDialog(false)}>
-                    <Dialog.Title>Delete Content</Dialog.Title>
-                    <Dialog.Content>
-                        <Paragraph>Are you sure you want to delete "{itemToDelete?.title}"?</Paragraph>
-                    </Dialog.Content>
-                    <Dialog.Actions>
-                        <Button onPress={() => setShowDeleteDialog(false)}>Cancel</Button>
-                        <Button onPress={confirmDelete} textColor="#EA4335">Delete</Button>
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
         </ScreenBackground>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F5F5F5',
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    errorText: {
-        fontSize: 16,
-        color: '#5f6368',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 8,
-        paddingBottom: 8,
-        backgroundColor: '#fff',
-    },
-    headerButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        flex: 1,
-        fontSize: 20,
-        fontWeight: '500',
-        color: '#202124',
-        marginHorizontal: 16,
-    },
-    bannerContainer: {
-        height: 200,
-        overflow: 'hidden',
-    },
-    bannerGradient: {
-        flex: 1,
-    },
-    bannerImage: {
-        ...StyleSheet.absoluteFillObject,
-        opacity: 0.3,
-    },
-    bannerOverlay: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        padding: 24,
-    },
-    bannerContent: {
-        flex: 1,
-    },
-    bannerTitle: {
-        fontSize: 32,
-        fontWeight: '500',
-        color: '#fff',
-        marginBottom: 4,
-    },
-    bannerSubtitle: {
-        fontSize: 16,
-        color: '#fff',
-        opacity: 0.9,
-    },
-    bannerInfoButton: {
-        padding: 8,
-    },
-    tabsContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#DADCE0',
-    },
-    tab: {
-        flex: 1,
-        paddingVertical: 14,
-        alignItems: 'center',
-        position: 'relative',
-    },
-    activeTab: {},
-    tabText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#5f6368',
-        letterSpacing: 0.5,
-    },
-    activeTabText: {
-        color: '#1967D2',
-    },
-    tabIndicator: {
-        position: 'absolute',
-        bottom: 0,
-        height: 3,
-        width: '60%',
-        backgroundColor: '#1967D2',
-        borderRadius: 2,
-    },
-    tabContent: {
-        flex: 1,
-    },
-    announcementCard: {
-        backgroundColor: '#fff',
-        padding: 16,
-        marginBottom: 8,
-    },
-    announcementInputRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatarCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#0EA5E9',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    avatarText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    announcementInput: {
-        flex: 1,
-        padding: 12,
-        borderRadius: 24,
-        backgroundColor: '#F1F3F4',
-    },
-    announcementPlaceholder: {
-        color: '#5f6368',
-        fontSize: 14,
-    },
-    postCard: {
-        backgroundColor: '#fff',
-        padding: 16,
-        marginBottom: 8,
-        borderRadius: 8,
-        marginHorizontal: 16,
-    },
-    postHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    postIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#E8F0FE',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    postInfo: {
-        flex: 1,
-    },
-    postAuthor: {
-        fontSize: 14,
-        color: '#202124',
-        marginBottom: 2,
-    },
-    postDate: {
-        fontSize: 12,
-        color: '#5f6368',
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 60,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#5f6368',
-        marginTop: 16,
-    },
-    emptySubtext: {
-        fontSize: 14,
-        color: '#80868B',
-        marginTop: 4,
-    },
-    contentList: {
-        padding: 16,
-    },
-    contentCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 12,
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-    },
-    contentIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#E8F0FE',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    contentInfo: {
-        flex: 1,
-    },
-    contentTitle: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#202124',
-        marginBottom: 2,
-    },
-    contentMeta: {
-        fontSize: 13,
-        color: '#5f6368',
-    },
-    contentActions: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    actionButton: {
-        padding: 8,
-    },
-    peopleSection: {
-        marginBottom: 24,
-    },
-    peopleSectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#DADCE0',
-    },
-    peopleSectionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#202124',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    peopleCount: {
-        fontSize: 13,
-        color: '#5f6368',
-    },
-    personCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F3F4',
-    },
-    personAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#34A853',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    personAvatarText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    personInfo: {
-        flex: 1,
-    },
-    personName: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#202124',
-    },
-    personEmail: {
-        fontSize: 13,
-        color: '#5f6368',
-        marginTop: 2,
-    },
-    fab: {
-        position: 'absolute',
-        right: 16,
-        bottom: 16,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#1967D2',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 6,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
+    container: { flex: 1 },
+    centerContainer: {
         width: '100%',
-        maxWidth: 400,
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 24,
-        elevation: 5,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#202124',
-        marginBottom: 20,
-    },
-    modalOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 12,
-        backgroundColor: '#F8F9FA',
-    },
-    modalOptionText: {
-        fontSize: 16,
-        color: '#202124',
-        marginLeft: 16,
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 8,
-    },
-    // Missing Styles
-    inputGroup: {
-        marginBottom: 16,
-    },
-    inputLabel: {
-        fontSize: 12,
-        marginBottom: 4,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    premiumInput: {
-        backgroundColor: 'transparent',
-        fontSize: 16,
-    },
-    row: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 16,
-    },
-    pickerButton: {
+        maxWidth: 1000,
+        alignSelf: 'center',
         flex: 1,
-        borderWidth: 1,
-        borderRadius: 4,
-        padding: 12,
-        justifyContent: 'center',
     },
-    pickerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-        gap: 8,
-    },
-    pickerText: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    scheduleButton: {
-        paddingHorizontal: 20,
-    },
+    header: { paddingBottom: 16 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
+    iconBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12 },
+    headerTitle: { flex: 1, textAlign: 'center', color: '#fff', fontSize: 18, fontWeight: '700', marginHorizontal: 12 },
+
+    tabContainer: { flexDirection: 'row', marginHorizontal: 16, padding: 4, borderRadius: 16 },
+    tabItem: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12 },
+    tabText: { fontWeight: '700', fontSize: 12 },
+
+    content: { flex: 1 },
+    scrollContent: { padding: 16, paddingBottom: 100 },
+
+    // Stream
+    banner: { height: 140, borderRadius: 24, padding: 20, justifyContent: 'flex-end', marginBottom: 20 },
+    bannerContent: { zIndex: 2 },
+    bannerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
+    bannerSubtitle: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginTop: 4 },
+    bannerIcon: { position: 'absolute', top: 16, right: 16 },
+
+    quickActions: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+    actionBtn: { flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
+    actionText: { fontWeight: '600', marginTop: 8, fontSize: 12 },
+
+    card: { borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center' },
+
+    feedTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+    feedDate: { fontSize: 12, marginTop: 4 },
+    iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+
+    emptyText: { textAlign: 'center', marginTop: 40 },
+
+    // Section Headers
+    sectionTitle: { fontSize: 12, fontWeight: '700', marginBottom: 12, letterSpacing: 1 },
+    addBtnSmall: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4 },
+
+    // List Items
+    listItem: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 16 },
+    iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    listTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+    divider: { height: 1, marginLeft: 68 },
+    avatarMedium: { width: 40, height: 40, borderRadius: 20 },
+
+    // Live Classes
+    joinBtnLarge: { backgroundColor: '#EF4444', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+    joinBtnTextLarge: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
+    // Modals
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+    modalCard: { borderRadius: 24, padding: 24, width: '100%', maxWidth: 500, alignSelf: 'center' },
+    modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
+    modalOption: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+    modalOptionText: { fontSize: 16, fontWeight: '600', marginLeft: 16 },
 });
 
 export default TeacherClassroomScreen;

@@ -12,6 +12,7 @@ import { spacing } from '../theme';
 import Mobile3DModelViewer from '../components/learn/Mobile3DModelViewer';
 import { useAppTheme } from '../context/ThemeContext';
 import ScreenBackground from '../components/ScreenBackground';
+import { useResponsive } from '../hooks/useResponsive';
 
 const CATEGORIES = ['All', 'Physics', 'Chemistry', 'Biology', 'Astronomy'];
 
@@ -19,7 +20,7 @@ const MobileModelListScreen = () => {
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
     const { isDark } = useAppTheme();
-    const { width } = useWindowDimensions();
+    const { width, containerStyle, getGridColumns } = useResponsive();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -27,10 +28,13 @@ const MobileModelListScreen = () => {
     const [viewerVisible, setViewerVisible] = useState(false);
 
     // Calculate Grid Dimensions
+    const columns = getGridColumns(2, 3, 4);
     const cardGap = spacing.md;
     const padding = spacing.lg * 2;
-    const availableWidth = width - padding;
-    const cardWidth = (availableWidth - cardGap) / 2;
+    const maxContentWidth = 900; 
+    const actualWidth = Math.min(width, maxContentWidth);
+    const availableWidth = actualWidth - padding;
+    const cardWidth = (availableWidth - cardGap * (columns - 1)) / columns;
 
     const models = Object.keys(MODEL_REGISTRY).map((key, index) => ({
         name: key,
@@ -87,7 +91,7 @@ const MobileModelListScreen = () => {
                     end={{ x: 1, y: 1 }}
                 >
                     {/* Header Content */}
-                    <View style={styles.headerContent}>
+                    <View style={[styles.headerContent, containerStyle]}>
                         <TouchableOpacity onPress={() => navigation.navigate('HomeTab' as any)} style={styles.backButton}>
                             <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
@@ -96,7 +100,7 @@ const MobileModelListScreen = () => {
                     </View>
 
                     {/* Search Bar */}
-                    <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
+                    <View style={[styles.searchContainer, isDark && styles.searchContainerDark, containerStyle]}>
                         <MaterialCommunityIcons name="magnify" size={20} color={isDark ? "#94A3B8" : "#666"} />
                         <TextInput
                             style={[styles.searchInput, isDark && styles.searchInputDark]}
@@ -114,7 +118,7 @@ const MobileModelListScreen = () => {
                 </LinearGradient>
 
                 {/* Overlapping Content Container */}
-                <View style={styles.mainContentContainer}>
+                <View style={[styles.mainContentContainer, containerStyle]}>
                     {/* Category Filters */}
                     <Animated.View entering={FadeInDown.delay(100)} style={styles.categoriesContainer}>
                         <ScrollView

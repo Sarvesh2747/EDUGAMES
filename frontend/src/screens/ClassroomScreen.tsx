@@ -1,54 +1,48 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ScrollView, Modal, ActivityIndicator, Linking, Alert, ScrollView as NativeScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Modal, Pressable, Platform, StatusBar } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { theme, gradients, spacing, borderRadius } from '../theme';
-import { useTranslation } from '../i18n';
-import { fetchClassroomContent, ClassroomItem, fetchStudentLiveClasses, LiveClassItem } from '../services/studentService';
-import { Surface, Button, IconButton, useTheme, Dialog, Portal, Paragraph } from 'react-native-paper';
 import ScreenBackground from '../components/ScreenBackground';
+import { fetchClassroomContent, ClassroomItem, fetchStudentLiveClasses, LiveClassItem } from '../services/studentService';
+import { useAppTheme } from '../context/ThemeContext';
 
 const ClassroomScreen = () => {
     const navigation = useNavigation<any>();
-    const route = useRoute<any>(); // Add useRoute
-    const { t } = useTranslation();
+    const route = useRoute<any>();
     const insets = useSafeAreaInsets();
-    const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people' | 'meets'>('stream');
+    const { isDark } = useAppTheme();
+    const [activeTab, setActiveTab] = useState<'stream' | 'classwork' | 'people' | 'meets'>(route.params?.initialTab || 'stream');
     const [classroomContent, setClassroomContent] = useState<ClassroomItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedChapter, setSelectedChapter] = useState<ClassroomItem | null>(null);
-
     const [meta, setMeta] = useState({
         className: 'Loading...',
         schoolName: '',
         teachers: [] as any[]
     });
-
-    // Live Classes State
     const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
     const [loadingLive, setLoadingLive] = useState(false);
 
-    React.useEffect(() => {
+    useEffect(() => {
         loadContent();
-    }, [route.params?.subject]); // Reload if subject changes
+        if (route.params?.initialTab) {
+            setActiveTab(route.params.initialTab);
+        }
+    }, [route.params?.subject, route.params?.initialTab]);
 
     const loadContent = async () => {
         try {
             setLoading(true);
             const subject = route.params?.subject;
-
-            // Fetch Classroom Content
             const data = await fetchClassroomContent(subject);
             setClassroomContent(data.content);
             setMeta(data.meta);
-
-            // Fetch Live Classes
             fetchLiveClasses(subject);
         } catch (error) {
-            console.error('Failed to load classroom content', error);
+            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -60,7 +54,7 @@ const ClassroomScreen = () => {
             const data = await fetchStudentLiveClasses(subject);
             setLiveClasses(data);
         } catch (error) {
-            console.error('Failed to load live classes', error);
+            console.error(error);
         } finally {
             setLoadingLive(false);
         }
@@ -86,244 +80,244 @@ const ClassroomScreen = () => {
             roomId: item.roomId,
             topic: item.topic,
             duration: item.duration,
-            isStudent: true // Flag to hide teacher controls if needed
+            isStudent: true
         });
     };
 
+    const themeStyles = {
+        text: isDark ? '#F8FAFC' : '#1E293B',
+        subtext: isDark ? '#94A3B8' : '#64748B',
+        cardBg: isDark ? '#1E293B' : '#fff',
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0',
+        tabActive: isDark ? '#818CF8' : '#4F46E5',
+        tabInactive: isDark ? '#94A3B8' : '#64748B',
+    };
+
+    const renderTabs = () => (
+        <View style={[styles.tabContainer, { backgroundColor: isDark ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.8)' }]}>
+            {['stream', 'meets', 'classwork', 'people'].map((tab) => {
+                const isActive = activeTab === tab;
+                return (
+                    <TouchableOpacity
+                        key={tab}
+                        style={[styles.tabItem, isActive && { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF' }]}
+                        onPress={() => setActiveTab(tab as any)}
+                    >
+                        <Text style={[
+                            styles.tabText,
+                            { color: isActive ? themeStyles.tabActive : themeStyles.tabInactive }
+                        ]}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
+        </View>
+    );
+
     const renderStreamTab = () => (
-        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Banner */}
-            <View style={styles.bannerContainer}>
-                <Image
-                    source={{ uri: 'https://gstatic.com/classroom/themes/img_code.jpg' }} // Generic coding theme image
-                    style={styles.bannerImage}
-                />
-                <View style={styles.bannerOverlay} />
+            <LinearGradient
+                colors={['#4F46E5', '#3B82F6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.banner}
+            >
                 <View style={styles.bannerContent}>
                     <Text style={styles.bannerTitle}>{meta.className}</Text>
                     <Text style={styles.bannerSubtitle}>{meta.schoolName}</Text>
                 </View>
-                <TouchableOpacity style={styles.bannerInfoBtn}>
-                    <MaterialCommunityIcons name="information-outline" size={20} color="#fff" />
-                </TouchableOpacity>
-            </View>
+                <MaterialCommunityIcons name="information" size={24} color="rgba(255,255,255,0.7)" style={styles.bannerIcon} />
+            </LinearGradient>
 
-            {/* Announcement Box placeholder */}
-            <Surface style={styles.announcementBox} elevation={1}>
+            {/* Announcement Input */}
+            <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]}>
                 <Image
                     source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.className)}&background=random` }}
-                    style={styles.tinyAvatar}
+                    style={styles.avatarSmall}
                 />
-                <Text style={styles.announcementPlaceholder}>Share with your class...</Text>
-            </Surface>
+                <Text style={{ color: themeStyles.subtext, flex: 1, marginLeft: 12 }}>Share something with your class...</Text>
+            </View>
 
             {/* Live Class Pinned */}
             {liveClasses.some(c => c.status === 'live') && (
-                <Surface style={styles.liveStreamCard} elevation={1}>
+                <LinearGradient
+                    colors={['rgba(220, 38, 38, 0.1)', 'rgba(220, 38, 38, 0.05)']}
+                    style={[styles.card, { borderColor: '#EF4444', borderWidth: 1 }]}
+                >
                     <View style={styles.liveHeader}>
-                        <MaterialCommunityIcons name="video-wireless" size={24} color="#d93025" />
-                        <Text style={styles.liveTitle}>Live Class Now</Text>
+                        <View style={styles.liveBadge}>
+                            <Text style={styles.liveBadgeText}>LIVE NOW</Text>
+                        </View>
+                        <Text style={[styles.liveTopic, { color: themeStyles.text }]}>{liveClasses.find(c => c.status === 'live')?.topic}</Text>
                     </View>
-                    <Text style={styles.liveBody}>Topic: {liveClasses.find(c => c.status === 'live')?.topic}</Text>
-                    <TouchableOpacity style={styles.joinBtn}>
-                        <Text style={styles.joinBtnText}>JOIN</Text>
+                    <TouchableOpacity style={styles.joinBtnLarge}>
+                        <Text style={styles.joinBtnTextLarge}>JOIN CLASS</Text>
                     </TouchableOpacity>
-                </Surface>
+                </LinearGradient>
             )}
 
-            {/* Stream List */}
-            <View style={styles.streamList}>
-                {loading ? (
-                    <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginTop: 20 }} />
-                ) : classroomContent.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No classwork yet</Text>
-                    </View>
-                ) : (
-                    classroomContent.map((item, index) => (
-                        <Animated.View key={item.id} entering={FadeInDown.delay(index * 50)}>
-                            <Surface style={[styles.streamItem, { opacity: item.status === 'completed' ? 0.6 : 1 }]} elevation={1}>
-                                <TouchableOpacity onPress={() => handleItemPress(item)} style={styles.streamTouchable} activeOpacity={0.7}>
-                                    <View style={[styles.streamIconCircle, { backgroundColor: item.type === 'quiz' ? '#1967d2' : '#e37400' }]}>
-                                        <MaterialCommunityIcons
-                                            name={item.type === 'quiz' ? 'clipboard-text' : 'book-open-variant'}
-                                            size={24}
-                                            color="#fff"
-                                        />
-                                    </View>
-                                    <View style={styles.streamTextContent}>
-                                        <Text style={styles.streamTitle}>
-                                            {item.teacher} posted a new {item.type === 'quiz' ? 'assignment' : 'material'}: {item.title}
-                                        </Text>
-                                        <Text style={styles.streamDate}>{new Date(item.date).toLocaleDateString()}</Text>
-                                    </View>
-                                    {item.status === 'completed' && (
-                                        <MaterialCommunityIcons name="check" size={20} color="#137333" />
-                                    )}
-                                </TouchableOpacity>
-                            </Surface>
-                        </Animated.View>
-                    ))
-                )}
-            </View>
+            {/* Feed */}
+            {loading ? (
+                <ActivityIndicator color="#4F46E5" style={{ marginTop: 20 }} />
+            ) : classroomContent.length === 0 ? (
+                <Text style={[styles.emptyText, { color: themeStyles.subtext }]}>No updates yet</Text>
+            ) : (
+                classroomContent.map((item, index) => (
+                    <Animated.View key={item.id} entering={FadeInDown.delay(index * 100)}>
+                        <TouchableOpacity
+                            style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]}
+                            onPress={() => handleItemPress(item)}
+                        >
+                            <View style={[styles.iconCircle, { backgroundColor: item.type === 'quiz' ? '#EEF2FF' : '#FFF7ED' }]}>
+                                <MaterialCommunityIcons
+                                    name={item.type === 'quiz' ? 'clipboard-text' : 'book-open-variant'}
+                                    size={24}
+                                    color={item.type === 'quiz' ? '#4F46E5' : '#F97316'}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.feedTitle, { color: themeStyles.text }]}>
+                                    <Text style={{ fontWeight: '700' }}>{item.teacher}</Text> posted a new {item.type}: {item.title}
+                                </Text>
+                                <Text style={[styles.feedDate, { color: themeStyles.subtext }]}>{new Date(item.date).toLocaleDateString()}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </Animated.View>
+                ))
+            )}
         </ScrollView>
     );
 
     const renderMeetsTab = () => (
-        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.topicSection}>
-                <Text style={[styles.topicTitle, { color: '#d93025', fontSize: 24, marginBottom: 16 }]}>Live Classes</Text>
-                <View style={[styles.topicDivider, { backgroundColor: '#d93025' }]} />
-
-                {loadingLive ? (
-                    <ActivityIndicator size="large" color="#d93025" style={{ marginTop: 20 }} />
-                ) : liveClasses.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <MaterialCommunityIcons name="video-off" size={64} color="#dadce0" />
-                        <Text style={[styles.emptyText, { marginTop: 16 }]}>No scheduled live classes</Text>
-                    </View>
-                ) : (
-                    liveClasses.map((item) => (
-                        <Surface key={item._id} style={[styles.liveStreamCard, { borderColor: item.status === 'live' ? '#d93025' : '#1967d2', borderLeftWidth: 4 }]} elevation={2}>
-                            <View style={styles.liveHeader}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.sectionTitle, { color: '#EF4444', marginBottom: 8 }]}>LIVE CLASSES</Text>
+            {loadingLive ? (
+                <ActivityIndicator color="#EF4444" style={{ marginTop: 20 }} />
+            ) : liveClasses.length === 0 ? (
+                <Text style={[styles.emptyText, { color: themeStyles.subtext }]}>No classes scheduled</Text>
+            ) : (
+                liveClasses.map((item) => (
+                    <LinearGradient
+                        key={item._id}
+                        colors={(item.status === 'live' ? ['rgba(239, 68, 68, 0.1)', 'rgba(239, 68, 68, 0.05)'] : [themeStyles.cardBg, themeStyles.cardBg]) as any}
+                        style={[styles.card, { borderColor: item.status === 'live' ? '#EF4444' : themeStyles.borderColor, flexDirection: 'column', alignItems: 'flex-start' }]}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 16 }}>
+                            <View style={[styles.iconCircle, { backgroundColor: item.status === 'live' ? '#FEE2E2' : '#EEF2FF', marginRight: 12 }]}>
                                 <MaterialCommunityIcons
                                     name={item.status === 'live' ? "video-wireless" : "calendar-clock"}
                                     size={24}
-                                    color={item.status === 'live' ? "#d93025" : "#1967d2"}
+                                    color={item.status === 'live' ? "#EF4444" : "#4F46E5"}
                                 />
-                                <Text style={[styles.liveTitle, { color: item.status === 'live' ? '#d93025' : '#1967d2' }]}>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.listTitle, { color: item.status === 'live' ? '#EF4444' : themeStyles.text }]}>
                                     {item.status === 'live' ? 'LIVE NOW' : 'Scheduled'}
                                 </Text>
-                            </View>
-
-                            <Text style={[styles.liveBody, { fontSize: 18, fontWeight: 'bold', marginBottom: 4 }]}>{item.topic}</Text>
-                            <Text style={[styles.contentMeta, { marginBottom: 16 }]}>
-                                {new Date(item.startAt).toLocaleDateString()} at {new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {item.duration} mins
-                            </Text>
-
-                            <TouchableOpacity
-                                style={[styles.joinBtn, { backgroundColor: item.status === 'live' ? '#d93025' : '#1967d2', opacity: item.status === 'completed' ? 0.5 : 1 }]}
-                                onPress={() => handleJoinLiveClass(item)}
-                                disabled={item.status === 'completed'}
-                            >
-                                <Text style={styles.joinBtnText}>
-                                    {item.status === 'live' ? 'JOIN NOW' : (item.status === 'completed' ? 'COMPLETED' : 'JOIN')}
+                                <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>
+                                    {new Date(item.startAt).toLocaleDateString()} • {item.duration} mins
                                 </Text>
-                            </TouchableOpacity>
-                        </Surface>
-                    ))
-                )}
-            </View>
+                            </View>
+                        </View>
+
+                        <Text style={[styles.listTitle, { color: themeStyles.text, fontSize: 18, marginBottom: 12 }]}>{item.topic}</Text>
+
+                        <TouchableOpacity
+                            style={[styles.joinBtnLarge, { backgroundColor: item.status === 'live' ? '#EF4444' : '#4F46E5', alignSelf: 'stretch', alignItems: 'center' }]}
+                            onPress={() => handleJoinLiveClass(item)}
+                        >
+                            <Text style={styles.joinBtnTextLarge}>
+                                {item.status === 'live' ? 'JOIN NOW' : 'JOIN'}
+                            </Text>
+                        </TouchableOpacity>
+                    </LinearGradient>
+                ))
+            )}
         </ScrollView>
     );
 
     const renderClassworkTab = () => (
-        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Resources Section */}
-            <View style={styles.topicSection}>
-                <Text style={styles.topicTitle}>Quick Access</Text>
-                <View style={styles.topicDivider} />
-
-                <TouchableOpacity style={styles.classworkItem} onPress={() => navigation.navigate('VideoLibrary')}>
-                    <View style={[styles.classworkIcon, { backgroundColor: '#d93025' }]}>
-                        <Ionicons name="logo-youtube" size={20} color="#fff" />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Quick Access */}
+            <Text style={[styles.sectionTitle, { color: themeStyles.subtext }]}>QUICK ACCESS</Text>
+            <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor, padding: 0 }]}>
+                <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate('VideoLibrary')}>
+                    <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}>
+                        <Ionicons name="logo-youtube" size={20} color="#EF4444" />
                     </View>
-                    <View style={styles.classworkInfo}>
-                        <Text style={styles.classworkTitle}>YouTube Video Library</Text>
-                        <Text style={styles.classworkSubtitle}>External Resources</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.listTitle, { color: themeStyles.text }]}>Video Library</Text>
+                        <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>External resources</Text>
                     </View>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color={themeStyles.subtext} />
                 </TouchableOpacity>
-
-                <TouchableOpacity style={styles.classworkItem} onPress={() => navigation.navigate('StudentOnlineAssignments')}>
-                    <View style={[styles.classworkIcon, { backgroundColor: '#188038' }]}>
-                        <Ionicons name="desktop-outline" size={20} color="#fff" />
+                <View style={[styles.divider, { backgroundColor: themeStyles.borderColor }]} />
+                <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate('StudentOnlineAssignments')}>
+                    <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
+                        <Ionicons name="desktop-outline" size={20} color="#10B981" />
                     </View>
-                    <View style={styles.classworkInfo}>
-                        <Text style={styles.classworkTitle}>E-Learning Modules</Text>
-                        <Text style={styles.classworkSubtitle}>Interactive Content</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.listTitle, { color: themeStyles.text }]}>E-Learning Modules</Text>
+                        <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>Interactive content</Text>
                     </View>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color={themeStyles.subtext} />
                 </TouchableOpacity>
             </View>
 
-            {/* Quizzes Section */}
+            {/* Assignments */}
             {classroomContent.some(i => i.type === 'quiz') && (
-                <View style={styles.topicSection}>
-                    <Text style={styles.topicTitle}>Assignments & Quizzes</Text>
-                    <View style={styles.topicDivider} />
-                    {classroomContent.filter(i => i.type === 'quiz').map((item) => (
-                        <TouchableOpacity
-                            key={item.id}
-                            style={[styles.classworkItem, item.status === 'completed' && { opacity: 0.5 }]}
-                            onPress={() => handleItemPress(item)}
-                        >
-                            <View style={[styles.classworkIcon, { backgroundColor: item.status === 'completed' ? '#bdc1c6' : '#1967d2' }]}>
-                                <MaterialCommunityIcons name="clipboard-text" size={20} color="#fff" />
-                            </View>
-                            <View style={styles.classworkInfo}>
-                                <Text style={[styles.classworkTitle, item.status === 'completed' && { textDecorationLine: 'line-through' }]}>{item.title}</Text>
-                                <Text style={styles.classworkSubtitle}>Due {new Date(item.date).toLocaleDateString()}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            {/* Chapters Section */}
-            {classroomContent.some(i => i.type === 'chapter') && (
-                <View style={styles.topicSection}>
-                    <Text style={styles.topicTitle}>Reading Materials</Text>
-                    <View style={styles.topicDivider} />
-                    {classroomContent.filter(i => i.type === 'chapter').map((item) => (
-                        <TouchableOpacity key={item.id} style={styles.classworkItem} onPress={() => handleItemPress(item)}>
-                            <View style={[styles.classworkIcon, { backgroundColor: '#e37400' }]}>
-                                <MaterialCommunityIcons name="book-open-variant" size={20} color="#fff" />
-                            </View>
-                            <View style={styles.classworkInfo}>
-                                <Text style={styles.classworkTitle}>{item.title}</Text>
-                                <Text style={styles.classworkSubtitle}>Posted {new Date(item.date).toLocaleDateString()}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                <>
+                    <Text style={[styles.sectionTitle, { color: themeStyles.subtext, marginTop: 24 }]}>ASSIGNMENTS</Text>
+                    <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor, padding: 0 }]}>
+                        {classroomContent.filter(i => i.type === 'quiz').map((item, idx, arr) => (
+                            <React.Fragment key={item.id}>
+                                <TouchableOpacity style={styles.listItem} onPress={() => handleItemPress(item)}>
+                                    <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
+                                        <MaterialCommunityIcons name="clipboard-text" size={20} color="#4F46E5" />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.listTitle, { color: themeStyles.text }]}>{item.title}</Text>
+                                        <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>Due {new Date(item.date).toLocaleDateString()}</Text>
+                                    </View>
+                                    {item.status === 'completed' && <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />}
+                                </TouchableOpacity>
+                                {idx < arr.length - 1 && <View style={[styles.divider, { backgroundColor: themeStyles.borderColor }]} />}
+                            </React.Fragment>
+                        ))}
+                    </View>
+                </>
             )}
         </ScrollView>
     );
 
     const renderPeopleTab = () => (
-        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.topicSection}>
-                <Text style={[styles.topicTitle, { color: '#1967d2', fontSize: 24, marginBottom: 16 }]}>Teachers</Text>
-                <View style={[styles.topicDivider, { backgroundColor: '#1967d2' }]} />
-
-                {meta.teachers.map((teacher, index) => (
-                    <View key={index} style={styles.peopleItem}>
-                        <Image source={{ uri: teacher.avatar }} style={styles.peopleAvatar} />
-                        <View style={styles.peopleInfo}>
-                            <Text style={styles.peopleName}>{teacher.name}</Text>
-                            <Text style={styles.peopleRole}>{teacher.subject}</Text>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.sectionTitle, { color: '#4F46E5', marginBottom: 8 }]}>TEACHERS</Text>
+            <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]}>
+                {meta.teachers.map((t, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Image source={{ uri: t.avatar }} style={styles.avatarMedium} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.listTitle, { color: themeStyles.text }]}>{t.name}</Text>
+                            <Text style={{ color: themeStyles.subtext, fontSize: 12 }}>{t.subject}</Text>
                         </View>
                         <TouchableOpacity>
-                            <MaterialCommunityIcons name="email-outline" size={20} color="#5f6368" />
+                            <MaterialCommunityIcons name="email-outline" size={24} color={themeStyles.subtext} />
                         </TouchableOpacity>
                     </View>
                 ))}
             </View>
 
-            <View style={[styles.topicSection, { marginTop: 40 }]}>
-                <Text style={[styles.topicTitle, { color: '#1967d2', fontSize: 24, marginBottom: 16 }]}>Classmates</Text>
-                <View style={[styles.topicDivider, { backgroundColor: '#1967d2' }]} />
-                {/* Mock Classmates */}
-                <View style={styles.peopleItem}>
-                    <View style={[styles.peopleAvatar, { backgroundColor: '#1e88e5', justifyContent: 'center', alignItems: 'center' }]}>
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>J</Text>
+            <Text style={[styles.sectionTitle, { color: '#4F46E5', marginTop: 24, marginBottom: 8 }]}>CLASSMATES</Text>
+            <View style={[styles.card, { backgroundColor: themeStyles.cardBg, borderColor: themeStyles.borderColor }]}>
+                {/* Mock */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={[styles.avatarMedium, { backgroundColor: '#F472B6', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>JD</Text>
                     </View>
-                    <Text style={styles.peopleName}>John Doe</Text>
-                </View>
-                <View style={styles.peopleItem}>
-                    <View style={[styles.peopleAvatar, { backgroundColor: '#c2185b', justifyContent: 'center', alignItems: 'center' }]}>
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>S</Text>
-                    </View>
-                    <Text style={styles.peopleName}>Sarah Smith</Text>
+                    <Text style={[styles.listTitle, { color: themeStyles.text }]}>John Doe</Text>
                 </View>
             </View>
         </ScrollView>
@@ -331,431 +325,116 @@ const ClassroomScreen = () => {
 
     return (
         <ScreenBackground style={styles.container}>
-            <View style={styles.safeArea}>
-                {/* Top Navigation Bar */}
-                <View style={[styles.navBar, { paddingTop: insets.top + spacing.sm }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navButton}>
-                            <MaterialCommunityIcons name="arrow-left" size={24} color="#5f6368" />
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+
+            {/* Full Width Header Container */}
+            <LinearGradient
+                colors={isDark ? ['#0A1628', '#1E293B'] : ['#6366F1', '#8B5CF6']}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
+            >
+                <View style={styles.centerContainer}>
+                    <View style={styles.headerRow}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <Text style={styles.navTitle} numberOfLines={1}>{meta.className}</Text>
+                        <Text style={styles.headerTitle} numberOfLines={1}>{meta.className}</Text>
+                        <TouchableOpacity style={styles.iconBtn}>
+                            <MaterialCommunityIcons name="dots-horizontal" size={24} color="#fff" />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.navButton}>
-                        <MaterialCommunityIcons name="dots-vertical" size={24} color="#5f6368" />
-                    </TouchableOpacity>
+                    {renderTabs()}
                 </View>
+            </LinearGradient>
 
-                {/* Tabs Header */}
-                <View style={styles.tabHeader}>
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'stream' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('stream')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'stream' && styles.tabTextActive]}>Stream</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'meets' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('meets')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'meets' && styles.tabTextActive]}>Meets</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'classwork' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('classwork')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'classwork' && styles.tabTextActive]}>Classwork</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'people' && styles.tabItemActive]}
-                        onPress={() => setActiveTab('people')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'people' && styles.tabTextActive]}>People</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Main Content Area */}
-                <View style={styles.contentArea}>
-                    <View style={styles.centeredContent}>
-                        {activeTab === 'stream' && renderStreamTab()}
-                        {activeTab === 'meets' && renderMeetsTab()}
-                        {activeTab === 'classwork' && renderClassworkTab()}
-                        {activeTab === 'people' && renderPeopleTab()}
-                    </View>
+            {/* Centered Content Container */}
+            <View style={styles.centerContainer}>
+                <View style={styles.content}>
+                    {activeTab === 'stream' && renderStreamTab()}
+                    {activeTab === 'meets' && renderMeetsTab()}
+                    {activeTab === 'classwork' && renderClassworkTab()}
+                    {activeTab === 'people' && renderPeopleTab()}
                 </View>
             </View>
 
             {/* Chapter Viewer Modal */}
             <Modal visible={!!selectedChapter} animationType="fade" transparent={true} onRequestClose={() => setSelectedChapter(null)}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalHeader}>
-                            <View style={styles.modalHeaderLeft}>
-                                <MaterialCommunityIcons name="book-open-variant" size={24} color="#1967d2" />
-                                <Text style={styles.modalTitle} numberOfLines={1}>{selectedChapter?.title}</Text>
-                            </View>
-                            <TouchableOpacity onPress={() => setSelectedChapter(null)} style={styles.closeButton}>
-                                <MaterialCommunityIcons name="close" size={24} color="#5f6368" />
+                <Pressable style={styles.modalOverlay} onPress={() => setSelectedChapter(null)}>
+                    <Pressable style={[styles.modalCard, { backgroundColor: themeStyles.cardBg }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={[styles.modalTitle, { color: themeStyles.text }]}>{selectedChapter?.title}</Text>
+                            <TouchableOpacity onPress={() => setSelectedChapter(null)}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeStyles.subtext} />
                             </TouchableOpacity>
                         </View>
-                        <NativeScrollView contentContainerStyle={styles.modalContent}>
-                            <Text style={styles.contentMeta}>
-                                {selectedChapter?.teacher} • {new Date(selectedChapter?.date || Date.now()).toLocaleDateString()}
-                            </Text>
-                            <View style={styles.divider} />
-                            <Text style={styles.contentText}>{selectedChapter?.fullContent || selectedChapter?.description}</Text>
-                        </NativeScrollView>
-                    </View>
-                </View>
+                        <ScrollView>
+                            <Text style={{ color: themeStyles.text, lineHeight: 24 }}>{selectedChapter?.fullContent || selectedChapter?.description}</Text>
+                        </ScrollView>
+                    </Pressable>
+                </Pressable>
             </Modal>
+
         </ScreenBackground>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    navBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 8,
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        backgroundColor: '#fff',
-    },
-    navButton: {
-        padding: 12,
-    },
-    navTitle: {
-        fontSize: 18,
-        color: '#3c4043',
-        fontWeight: '500',
-        marginLeft: 8,
-        maxWidth: 200,
-    },
-    tabHeader: {
-        flexDirection: 'row',
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        elevation: 2,
-    },
-    tabItem: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: 14,
-        borderBottomWidth: 3,
-        borderBottomColor: 'transparent',
-    },
-    tabItemActive: {
-        borderBottomColor: '#1967d2',
-    },
-    tabText: {
-        textTransform: 'uppercase',
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#5f6368',
-    },
-    tabTextActive: {
-        color: '#1967d2',
-    },
-    contentArea: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    centeredContent: {
-        flex: 1,
-        maxWidth: 900,
+    container: { flex: 1 },
+    centerContainer: {
         width: '100%',
+        maxWidth: 1000,
         alignSelf: 'center',
-    },
-    tabContent: {
         flex: 1,
-        padding: spacing.md,
     },
+    header: { paddingBottom: 16 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
+    iconBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12 },
+    headerTitle: { flex: 1, textAlign: 'center', color: '#fff', fontSize: 18, fontWeight: '700', marginHorizontal: 12 },
 
-    // STREAM STYLES
-    bannerContainer: {
-        height: 140,
-        borderRadius: 8,
-        overflow: 'hidden',
-        marginBottom: 24,
-        position: 'relative',
-        backgroundColor: '#1967d2', // Fallback
-    },
-    bannerImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    bannerOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.4)', // Darker so text pops
-    },
-    bannerContent: {
-        position: 'absolute',
-        bottom: 16,
-        left: 16,
-        right: 16,
-    },
-    bannerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#fff',
-        marginBottom: 4,
-    },
-    bannerSubtitle: {
-        fontSize: 14,
-        color: '#fff',
-        fontWeight: '500',
-    },
-    bannerInfoBtn: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        padding: 8,
-    },
-    announcementBox: {
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        padding: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#dadce0',
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-    },
-    tinyAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 12,
-    },
-    announcementPlaceholder: {
-        color: '#80868b',
-        fontSize: 13,
-    },
-    streamList: {
-        paddingBottom: 20,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        paddingVertical: 40,
-    },
-    emptyText: {
-        color: '#5f6368',
-    },
-    streamItem: {
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#dadce0',
-    },
-    streamTouchable: {
-        flexDirection: 'row',
-        padding: 16,
-        alignItems: 'center',
-    },
-    streamIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 16,
-    },
-    streamTextContent: {
-        flex: 1,
-    },
-    streamTitle: {
-        fontSize: 14,
-        color: '#3c4043',
-        fontWeight: '500',
-        lineHeight: 20,
-    },
-    streamDate: {
-        fontSize: 12,
-        color: '#5f6368',
-        marginTop: 2,
-    },
-    liveStreamCard: {
-        backgroundColor: '#fff',
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#d93025',
-        borderRadius: 8,
-        padding: 16,
-    },
-    liveHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    liveTitle: {
-        color: '#d93025',
-        fontWeight: 'bold',
-        marginLeft: 8,
-    },
-    liveBody: {
-        fontSize: 14,
-        color: '#3c4043',
-        marginBottom: 12,
-    },
-    joinBtn: {
-        backgroundColor: '#d93025',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 20,
-        paddingVertical: 6,
-        borderRadius: 4,
-    },
-    joinBtnText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 13,
-    },
+    tabContainer: { flexDirection: 'row', marginHorizontal: 16, padding: 4, borderRadius: 16 },
+    tabItem: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12 },
+    tabText: { fontWeight: '700', fontSize: 12 },
 
-    // CLASSWORK STYLES
-    topicSection: {
-        marginBottom: 32,
-    },
-    topicTitle: {
-        fontSize: 20,
-        color: '#1967d2',
-        marginBottom: 12,
-        paddingHorizontal: 8,
-    },
-    topicDivider: {
-        height: 1,
-        backgroundColor: '#1967d2',
-        marginBottom: 16,
-        marginHorizontal: 8,
-        width: 100, // Partial underline effect
-    },
-    classworkItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f3f4',
-    },
-    classworkIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 16,
-    },
-    classworkInfo: {
-        flex: 1,
-    },
-    classworkTitle: {
-        fontSize: 14,
-        color: '#3c4043',
-        fontWeight: '500',
-    },
-    classworkSubtitle: {
-        fontSize: 12,
-        color: '#5f6368',
-        marginTop: 2,
-    },
+    content: { flex: 1 },
+    scrollContent: { padding: 16, paddingBottom: 100 },
 
-    // PEOPLE STYLES
-    peopleItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-    },
-    peopleAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 16,
-    },
-    peopleInfo: {
-        flex: 1,
-    },
-    peopleName: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#3c4043',
-    },
-    peopleRole: {
-        fontSize: 12,
-        color: '#5f6368',
-    },
+    // Stream
+    banner: { height: 140, borderRadius: 24, padding: 20, justifyContent: 'flex-end', marginBottom: 20 },
+    bannerContent: { zIndex: 2 },
+    bannerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
+    bannerSubtitle: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginTop: 4 },
+    bannerIcon: { position: 'absolute', top: 16, right: 16 },
 
-    // MODAL
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-    },
-    modalContainer: {
-        backgroundColor: '#fff',
-        margin: spacing.lg,
-        borderRadius: 8,
-        maxHeight: '80%',
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: '#dadce0',
-    },
-    modalHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    closeButton: {
-        padding: 4,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '400',
-        color: '#3c4043',
-        marginLeft: 12,
-    },
-    modalContent: {
-        padding: spacing.lg,
-    },
-    contentMeta: {
-        fontSize: 12,
-        color: '#5f6368',
-        marginBottom: spacing.md,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#dadce0',
-    },
-    contentText: {
-        fontSize: 14,
-        color: '#3c4043',
-        lineHeight: 22,
-    },
+    card: { borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center' },
+    avatarSmall: { width: 32, height: 32, borderRadius: 16 },
+
+    feedTitle: { fontSize: 14, lineHeight: 20 },
+    feedDate: { fontSize: 12, marginTop: 4 },
+    iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+
+    // Live
+    liveHeader: { flex: 1 },
+    liveBadge: { backgroundColor: '#EF4444', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginBottom: 8 },
+    liveBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+    liveTopic: { fontSize: 16, fontWeight: '700' },
+    joinBtnLarge: { backgroundColor: '#EF4444', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+    joinBtnTextLarge: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
+    emptyText: { textAlign: 'center', marginTop: 40 },
+
+    // Classwork
+    sectionTitle: { fontSize: 12, fontWeight: '700', marginBottom: 12, letterSpacing: 1 },
+    listItem: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 16 },
+    iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    listTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+    divider: { height: 1, marginLeft: 68 },
+
+    // People
+    avatarMedium: { width: 48, height: 48, borderRadius: 24 },
+
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+    modalCard: { borderRadius: 24, padding: 24, maxHeight: '80%', width: '100%', maxWidth: 600, alignSelf: 'center' },
+    modalTitle: { fontSize: 20, fontWeight: '700', flex: 1 },
 });
 
 export default ClassroomScreen;

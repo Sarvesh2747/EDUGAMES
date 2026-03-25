@@ -220,7 +220,7 @@ const getClassroomsList = async (req, res) => {
                 { students: req.user._id },
                 { classNumber: classNumber }
             ]
-        });
+        }).populate('teacherId', 'name avatar');
 
         // Add Real Classrooms first (Priority)
         realClassrooms.forEach(c => {
@@ -232,8 +232,8 @@ const getClassroomsList = async (req, res) => {
                 gradient: c.gradient,
                 subject: c.subject,
                 className: c.title || `Class ${c.classNumber}`,
-                teacher: 'Class Teacher', // could populate teacherId if needed
-                teacherAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.subject)}&background=random`,
+                teacher: c.teacherId ? c.teacherId.name : 'Class Teacher',
+                teacherAvatar: c.teacherId?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.subject)}&background=random`,
                 itemCount: 0,
                 isJoined: true,
                 code: c.code,
